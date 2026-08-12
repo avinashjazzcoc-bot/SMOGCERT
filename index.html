@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0877c9">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SMOGCERT SOLUTIONS | Smart Reminder Dashboard</title>
@@ -183,9 +180,13 @@
     <div class="table-title-row">
       <div>
         <h2>Vehicle Records</h2>
-        <p>Manage reminders, calls, renewals and closed records.</p>
+        <p id="tableDescription">Showing only today, next 10 days and expired vehicles.</p>
       </div>
-
+      <div class="record-view-actions no-print">
+        <button type="button" id="upcomingView" class="view-btn active">🔔 Upcoming &amp; Expired</button>
+        <button type="button" id="vehicleRecordsView" class="view-btn">📋 Vehicle Records</button>
+        <button type="button" id="pdfButton" class="pdf-btn" style="display:none">📄 Save All Data as PDF</button>
+      </div>
     </div>
 
     <div class="table-wrap">
@@ -210,6 +211,8 @@
       </table>
     </div>
   </section>
+
+  <section id="printArea" class="print-area"></section>
 
 </main>
 
