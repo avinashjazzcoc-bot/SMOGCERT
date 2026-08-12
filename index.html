@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0877c9">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMOGCERT SOLUTIONS | Smart Reminder Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="top-header">
+  <div class="brand-wrap">
+    <div class="brand-logo">SC</div>
+    <div>
+      <div class="brand-name"><strong>SMOGCERT</strong> <span>SOLUTIONS</span></div>
+      <div class="brand-tagline">Pollution Certificate Reminder &amp; Vehicle Management</div>
+    </div>
+  </div>
+  <div class="top-tools">
+    <nav class="quick-links" aria-label="Useful vehicle service links">
+      <a class="quick-link" href="https://puc.parivahan.gov.in/puc/" target="_blank" rel="noopener noreferrer" title="Open PUCC">
+        <span class="quick-icon">📄</span>
+        <span>PUCC</span>
+      </a>
+      <a class="quick-link" href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/statevalidation/homepage.xhtml" target="_blank" rel="noopener noreferrer" title="Open Vahan service">
+        <span class="quick-icon">📱</span>
+        <span>Mobile Update</span>
+      </a>
+      <a class="quick-link" href="https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en" target="_blank" rel="noopener noreferrer" title="Check Aadhaar validity">
+        <span class="quick-icon">🪪</span>
+        <span>Aadhaar</span>
+      </a>
+      <a class="quick-link" href="https://echallan.parivahan.gov.in/index/accused-challan" target="_blank" rel="noopener noreferrer" title="Open eChallan">
+        <span class="quick-icon">🚨</span>
+        <span>eChallan</span>
+      </a>
+      <a class="quick-link" href="https://vahandetails.com" target="_blank" rel="noopener noreferrer" title="Open vehicle details">
+        <span class="quick-icon">🚗</span>
+        <span>Vehicle Details</span>
+      </a>
+      <a class="quick-link sheet-link" href="https://docs.google.com/spreadsheets/d/1S8a5kqVttJa7TSijjkEUzmL-F7rc039LHltu7rCi5j0/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Open Google Sheet">
+        <span class="quick-icon">📊</span>
+        <span>Google Sheet</span>
+      </a>
+    </nav>
+    <div class="header-pill">🚗 Smart Reminder Dashboard</div>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="overview-head">
+    <div>
+      <div class="eyebrow">OVERVIEW</div>
+      <h1>Vehicle Dashboard</h1>
+    </div>
+    <div class="live-pill"><span></span> Live Google Sheets Data</div>
+  </section>
+
+  <section class="dashboard main-dashboard">
+
+    <div class="dashboard-card total-card">
+      <div class="dashboard-number" id="totalVehicles">0</div>
+      <div class="dashboard-label">Valid Vehicles</div>
+    </div>
+
+    <div class="dashboard-card due-card">
+      <div class="dashboard-number" id="dueVehicles">0</div>
+      <div class="dashboard-label">Due in 10 Days</div>
+    </div>
+
+    <div class="dashboard-card urgent-card">
+      <div class="dashboard-number" id="urgentVehicles">0</div>
+      <div class="dashboard-label">Urgent</div>
+    </div>
+
+    <div class="dashboard-card expired-card">
+      <div class="dashboard-number" id="expiredVehicles">0</div>
+      <div class="dashboard-label">Expired</div>
+    </div>
+
+  </section>
+
+  <section class="work-dashboard">
+    <div class="work-card done-card">
+      <div class="work-number" id="callDone">0</div>
+      <div class="work-label">Call Done</div>
+    </div>
+    <div class="work-card cant-card">
+      <div class="work-number" id="cantConnect">0</div>
+      <div class="work-label">Can't Connect</div>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="search-wrap">
+      <input type="search" id="vehicleSearch" class="vehicle-search"
+             placeholder="Search Registration Number / Phone Number / Vehicle Name"
+             autocomplete="off">
+      <button type="button" id="clearSearch" class="clear-search-btn" title="Clear search">✕</button>
+    </div>
+    <div class="toolbar">
+      <button type="button" id="refreshData" class="refresh-btn">↻ &nbsp;Refresh Google Sheet</button>
+      <div id="searchResultCount" class="search-result-count"></div>
+      <div id="message" class="message"></div>
+    </div>
+  </section>
+
+  <section class="manual-add-card" id="manualAddVehicleCard">
+    <div class="manual-add-header">
+      <div class="add-title-wrap">
+        <div class="add-symbol">＋</div>
+        <div>
+          <div class="manual-add-title">Add New Vehicle</div>
+          <div class="manual-add-subtitle">Enter a vehicle manually and save it directly to Google Sheets.</div>
+        </div>
+      </div>
+      <button type="button" id="toggleAddVehicle" class="add-toggle-btn">Add Vehicle</button>
+    </div>
+
+    <form id="addVehicleForm" class="manual-form" style="display:none;">
+      <div class="manual-grid">
+        <div>
+          <label>Registration Number *</label>
+          <input id="newVehicleNumber" type="text" required maxlength="20"
+                 placeholder="KL01AB1234" autocomplete="off">
+          <small>Only A–Z and 0–9. Automatically converted to CAPITAL letters.</small>
+        </div>
+
+        <div>
+          <label>Mobile Number *</label>
+          <input id="newMobileNumber" type="tel" required maxlength="10"
+                 inputmode="numeric" placeholder="9876543210" autocomplete="off">
+          <small>Exactly 10 digits.</small>
+        </div>
+
+        <div>
+          <label>Vehicle Name</label>
+          <input id="newVehicleName" type="text" placeholder="Car / Bike / Auto">
+        </div>
+
+        <div>
+          <label>Fuel Type</label>
+          <select id="newFuelType">
+            <option value="">Select</option>
+            <option>Petrol</option>
+            <option>Diesel</option>
+            <option>CNG</option>
+            <option>Electric</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div>
+          <label>PUCC Validity *</label>
+          <select id="newValidity" required>
+            <option value="">Select validity</option>
+            <option value="6 month">6 Months</option>
+            <option value="1 year">1 Year</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Remarks</label>
+          <input id="newRemarks" type="text" placeholder="Optional">
+        </div>
+      </div>
+
+      <div id="newVehiclePreview" class="new-expiry-preview"></div>
+
+      <div class="manual-actions">
+        <button type="submit" class="save-new-btn">✓ Save Vehicle</button>
+        <button type="button" id="cancelAddVehicle" class="cancel-new-btn">Cancel</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="table-card">
+    <div class="table-title-row">
+      <div>
+        <h2>Vehicle Records</h2>
+        <p>Manage reminders, calls, renewals and closed records.</p>
+      </div>
+
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Registration No</th>
+            <th>Phone</th>
+            <th>PUCC Expiry</th>
+            <th>Days Left</th>
+            <th>Expiry Status</th>
+            <th>Work Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+
+        <tbody id="tableBody">
+          <tr>
+            <td colspan="7" class="loading-cell">Loading vehicles...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- RENEW VEHICLE POPUP -->
+<div id="renewModal" class="modal-backdrop" aria-hidden="true">
+  <div class="renew-modal" role="dialog" aria-modal="true" aria-labelledby="renewTitle">
+    <div class="modal-head">
+      <div>
+        <div class="modal-kicker">VEHICLE RENEWAL</div>
+        <h2 id="renewTitle">🔄 Renew Vehicle</h2>
+      </div>
+      <button type="button" class="modal-close" id="renewClose" aria-label="Close">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="vehicle-summary">
+        <div class="summary-reg" id="renewVehicleNumber">—</div>
+        <div class="summary-info" id="renewVehicleInfo">—</div>
+      </div>
+
+      <div class="form-field">
+        <label for="renewValidity">New PUCC Validity</label>
+        <select id="renewValidity">
+          <option value="6 month">6 Months</option>
+          <option value="1 year">1 Year</option>
+        </select>
+      </div>
+
+      <div id="renewPreview" class="renew-preview">New PUCC expiry: —</div>
+
+      <div class="form-field">
+        <label for="renewRemarks">Remarks</label>
+        <textarea id="renewRemarks" rows="3" placeholder="Optional remarks"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="renewCancel">Cancel</button>
+        <button type="button" class="btn-confirm" id="renewConfirm">✓ Confirm Renewal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

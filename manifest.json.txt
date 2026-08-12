@@ -1,0 +1,22 @@
+{
+  "name": "SMOGCERT SOLUTIONS",
+  "short_name": "SMOGCERT",
+  "description": "Pollution Certificate Reminder System",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f9fc",
+  "theme_color": "#0877c9",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
