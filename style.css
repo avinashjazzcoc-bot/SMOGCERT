@@ -426,3 +426,21 @@ tbody tr:hover td{background:#f8fbfe}
     flex-basis:34px;
   }
 }
+
+.record-view-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.view-btn,.pdf-btn{border:0;border-radius:9px;padding:9px 12px;font-size:11px;font-weight:900;color:#fff;cursor:pointer}
+.view-btn{background:#64748b}.view-btn.active{background:#176eb3;box-shadow:0 0 0 3px rgba(23,110,179,.12)}
+.pdf-btn{background:#dc2626}.view-btn:hover,.pdf-btn:hover{opacity:.9}
+.print-area{display:none}
+@media print{
+  body{background:#fff!important}
+  .top-header,.overview-head,.dashboard,.work-dashboard,.controls,.manual-add-card,.table-card,.no-print{display:none!important}
+  .container{max-width:none;padding:0!important}
+  .print-area{display:block!important}
+  .print-area h1{text-align:center;font-size:20px;margin:0 0 4px}
+  .print-area p{text-align:center;font-size:11px;color:#555;margin:0 0 12px}
+  .print-area table{display:table!important;min-width:0!important;width:100%!important;border-collapse:collapse;font-size:9px}
+  .print-area th{background:#e5e7eb!important;color:#111!important;border:1px solid #aaa;padding:5px!important}
+  .print-area td{border:1px solid #bbb;padding:5px!important}
+}
+@media(max-width:900px){.record-view-actions{justify-content:flex-start}.table-title-row{align-items:flex-start;flex-direction:column}}

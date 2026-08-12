@@ -11,6 +11,7 @@ const API_URL =
 const tableBody = document.getElementById("tableBody");
 
 let vehicleData = [];
+let currentView = "upcoming"; // upcoming = today/next 10 days/expired, all = every record
 
 document.addEventListener("DOMContentLoaded", function () {
     setupRenewModal();
@@ -21,6 +22,32 @@ document.addEventListener("DOMContentLoaded", function () {
     if (refreshButton) {
         refreshButton.addEventListener("click", loadVehicles);
     }
+
+    const upcomingButton = document.getElementById("upcomingView");
+    const allButton = document.getElementById("vehicleRecordsView");
+    const pdfButton = document.getElementById("pdfButton");
+
+    if (upcomingButton) {
+        upcomingButton.addEventListener("click", function () {
+            currentView = "upcoming";
+            updateViewButtons();
+            renderFilteredVehicles();
+        });
+    }
+
+    if (allButton) {
+        allButton.addEventListener("click", function () {
+            currentView = "all";
+            updateViewButtons();
+            renderFilteredVehicles();
+        });
+    }
+
+    if (pdfButton) {
+        pdfButton.addEventListener("click", saveAllDataAsPDF);
+    }
+
+    updateViewButtons();
 });
 
 async function loadVehicles() {
@@ -253,7 +280,17 @@ function vehicleMatchesSearch(vehicle, term) {
 
 function renderFilteredVehicles() {
     const filtered = vehicleData.filter(function (vehicle) {
-        return vehicleMatchesSearch(vehicle, currentSearchTerm);
+        if (!vehicleMatchesSearch(vehicle, currentSearchTerm)) return false;
+
+        if (currentView === "upcoming") {
+            const timestamp = getVehicleValue(vehicle, ["timestamp", "Timestamp"]);
+            const validity = getVehicleValue(vehicle, ["validUpto", "valid upto", "valid up to"]);
+            const days = getDaysLeft(calculateExpiry(timestamp, validity));
+            // Main screen: expired + today + next 10 days.
+            if (days === null || days > 10) return false;
+        }
+
+        return true;
     });
 
     displayVehicles(filtered);
@@ -321,9 +358,77 @@ function displayVehicles(data) {
     });
 
     if (count === 0) {
-        tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;">No vehicles found.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;">${currentView === "all" ? "No vehicle records found." : "No vehicles are due within the next 10 days or expired."}</td></tr>`;
     }
 }
+
+function updateViewButtons() {
+    const upcoming = document.getElementById("upcomingView");
+    const all = document.getElementById("vehicleRecordsView");
+    const pdf = document.getElementById("pdfButton");
+    const description = document.getElementById("tableDescription");
+
+    if (upcoming) upcoming.classList.toggle("active", currentView === "upcoming");
+    if (all) all.classList.toggle("active", currentView === "all");
+    if (pdf) pdf.style.display = currentView === "all" ? "inline-block" : "none";
+    if (description) {
+        description.textContent = currentView === "all"
+            ? "All vehicle records from Google Sheets. Use Save All Data as PDF to save the complete list."
+            : "Showing today, next 10 days and expired vehicles automatically.";
+    }
+}
+
+function saveAllDataAsPDF() {
+    const printArea = document.getElementById("printArea");
+    if (!printArea) return;
+
+    const rows = vehicleData.map(function (vehicle) {
+        const reg = normalizeVehicleNumber(getVehicleValue(vehicle, ["vehicleNumber", "vehicle number", "Registration Number"]));
+        const mobile = normalizeMobileNumber(getVehicleValue(vehicle, ["mobileNumber", "mobile number", "Contact Number"]));
+        const timestamp = getVehicleValue(vehicle, ["timestamp", "Timestamp"]);
+        const validity = getVehicleValue(vehicle, ["validUpto", "valid upto", "valid up to"]);
+        const name = getVehicleValue(vehicle, ["vehicleName", "vehicle name"]);
+        const fuel = getVehicleValue(vehicle, ["fuelType", "fuel type"]);
+        const status = getVehicleValue(vehicle, ["status", "Status"]) || "Pending";
+        const callDate = getVehicleValue(vehicle, ["callDate", "call date"]);
+        const remarks = getVehicleValue(vehicle, ["remarks", "Remarks"]);
+        const expiry = calculateExpiry(timestamp, validity);
+        const days = getDaysLeft(expiry);
+        const state = getExpiryState(days);
+
+        return {reg,mobile,name,fuel,validity,expiry,days,state,status,callDate,remarks};
+    });
+
+    let html = `
+      <h1>SMOGCERT SOLUTIONS — Complete Vehicle Records</h1>
+      <p>Generated: ${escapeHtml(formatDate(new Date()))} • Total records: ${rows.length}</p>
+      <table>
+        <thead><tr>
+          <th>Registration No</th><th>Mobile</th><th>Vehicle Name</th><th>Fuel Type</th>
+          <th>PUCC Validity</th><th>PUCC Expiry</th><th>Days Left</th><th>Expiry Status</th>
+          <th>Work Status</th><th>Call Date</th><th>Remarks</th>
+        </tr></thead><tbody>`;
+
+    rows.forEach(function (r) {
+        const daysText = r.days === null ? "—" : r.days < 0 ? Math.abs(r.days) + " overdue" : r.days === 0 ? "TODAY" : String(r.days);
+        html += `<tr>
+          <td>${escapeHtml(r.reg)}</td><td>${escapeHtml(r.mobile)}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.fuel)}</td>
+          <td>${escapeHtml(r.validity)}</td>
+          <td>${escapeHtml(r.expiry ? formatDate(r.expiry) : "—")}</td><td>${escapeHtml(daysText)}</td><td>${escapeHtml(r.state.label)}</td>
+          <td>${escapeHtml(r.status)}</td><td>${escapeHtml(formatDate(r.callDate) || "")}</td><td>${escapeHtml(r.remarks)}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    printArea.innerHTML = html;
+
+    window.print();
+
+    setTimeout(function () {
+        printArea.innerHTML = "";
+    }, 1000);
+}
+
 
 function statusBadge(status) {
     let cls = "status-pending";
@@ -755,17 +860,4 @@ if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", setupManualAddVehicle);
 } else {
   setupManualAddVehicle();
-}
-// Register SMOGCERT SOLUTIONS service worker
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker
-            .register("./service-worker.js")
-            .then(() => {
-                console.log("SMOGCERT service worker registered");
-            })
-            .catch(error => {
-                console.error("Service worker registration failed:", error);
-            });
-    });
 }
