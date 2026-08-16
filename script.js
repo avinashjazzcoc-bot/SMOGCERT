@@ -305,13 +305,34 @@ function renderFilteredVehicles() {
     }
 }
 
+function getTimestampMillis(vehicle) {
+    const timestamp = getVehicleValue(vehicle, [
+        "timestamp", "Timestamp", "date", "Date"
+    ]);
+    const date = parseDate(timestamp);
+    return date ? date.getTime() : 0;
+}
+
 function displayVehicles(data) {
     if (!tableBody) return;
     tableBody.innerHTML = "";
 
     let count = 0;
 
-    data.forEach(function (vehicle) {
+    // Reminder view: nearest expiry first (expired/urgent first).
+    // Vehicle Records: newest Google Sheet timestamp first.
+    const sortedData = data.slice().sort(function (a, b) {
+        if (currentView === "upcoming") {
+            const ad = getExpiryInfo(a).days;
+            const bd = getExpiryInfo(b).days;
+            const av = ad === null ? Infinity : ad;
+            const bv = bd === null ? Infinity : bd;
+            if (av !== bv) return av - bv;
+        }
+        return getTimestampMillis(b) - getTimestampMillis(a);
+    });
+
+    sortedData.forEach(function (vehicle) {
         const vehicleNumber = normalizeVehicleNumber(getVehicleValue(vehicle, ["vehicleNumber", "vehicle number", "Registration Number"]));
         const mobileNumber = normalizeMobileNumber(getVehicleValue(vehicle, ["mobileNumber", "mobile number", "Contact Number"]));
         const timestamp = getVehicleValue(vehicle, ["timestamp", "Timestamp"]);
