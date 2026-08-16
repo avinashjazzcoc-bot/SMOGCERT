@@ -70,6 +70,11 @@ body.smogcert-locked>footer{display:none!important}
 }
 </style>
 
+
+<style>
+.modal{position:fixed;inset:0;z-index:10000;background:#082b4dbd;display:none;align-items:center;justify-content:center;padding:18px}
+.modal-box{width:min(520px,100%);background:#fff;border-radius:20px;padding:26px;box-shadow:0 25px 80px #0005}.modal-box h2{margin:0 0 8px;color:#092c55}.modal-box p{color:#64748b}.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.modal-grid .full{grid-column:1/-1}.modal-box input,.modal-box select,.modal-box textarea{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px;font-size:15px}.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}.modal-actions button{border:0;border-radius:9px;padding:11px 15px;font-weight:800;cursor:pointer}.primary{background:#0877c9;color:#fff}.secondary{background:#e2e8f0;color:#334155}.modal-error{color:#dc2626;font-weight:700;min-height:22px;margin-top:8px}.add-btn{background:#16a34a;color:#fff}.password-btn{background:#7c3aed;color:#fff}.sheet-lock-btn{background:#0877c9;color:#fff}
+</style>
 </head>
 <body class="smogcert-locked">
 
@@ -99,9 +104,30 @@ body.smogcert-locked>footer{display:none!important}
     <a class="quick-link" href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/statevalidation/homepage.xhtml" target="_blank" rel="noopener"><span class="quick-icon">📱</span><span>Mobile</span></a>
     <a class="quick-link" href="https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en" target="_blank" rel="noopener"><span class="quick-icon">🪪</span><span>Aadhaar</span></a>
     <a class="quick-link" href="https://echallan.parivahan.gov.in/index/accused-challan" target="_blank" rel="noopener"><span class="quick-icon">🚨</span><span>eChallan</span></a>
-    <a class="quick-link" href="https://vahandetails.com" target="_blank" rel="noopener"><span class="quick-icon">🔎</span><span>Vehicle</span></a><a class="quick-link sheet-link" href="https://docs.google.com/spreadsheets/d/1S8a5kqVttJa7TSijjkEUzmL-F7rc039LHltu7rCi5j0/edit?gid=1544491919#gid=1544491919" target="_blank" rel="noopener"><span class="quick-icon">📊</span><span>Records</span></a>
+    <a class="quick-link" href="https://vahandetails.com" target="_blank" rel="noopener"><span class="quick-icon">🔎</span><span>Vehicle</span></a><a id="recordsLink" class="quick-link sheet-link" href="#"><span class="quick-icon">📊</span><span>Records</span></a>
   </nav>
 </header>
+
+
+<div id="sheetLockModal" class="modal"><div class="modal-box">
+<h2>🔒 Google Sheet Security</h2><p>Enter the Records password to open the private Google Sheet.</p>
+<input id="sheetLockPassword" type="password" placeholder="Records password" autocomplete="off"><div id="sheetLockError" class="modal-error"></div>
+<div class="modal-actions"><button id="sheetLockCancel" class="secondary">Cancel</button><button id="sheetUnlockButton" class="sheet-lock-btn">🔓 Open Google Sheet</button></div></div></div>
+<div id="passwordModal" class="modal"><div class="modal-box">
+<h2>🔑 Change Login Password</h2><p>Use at least 8 characters. You will be logged out after changing it.</p>
+<input id="oldPassword" type="password" placeholder="Current password"><br><br><input id="newPassword" type="password" placeholder="New password"><br><br><input id="confirmPassword" type="password" placeholder="Confirm new password"><div id="passwordError" class="modal-error"></div>
+<div class="modal-actions"><button id="passwordCancel" class="secondary">Cancel</button><button id="changePasswordSave" class="primary">Save New Password</button></div></div></div>
+<div id="addVehicleModal" class="modal"><div class="modal-box">
+<h2>➕ Add New Vehicle</h2><p>Enter a new vehicle record. Registration accepts capital letters and numbers only; mobile must be 10 digits.</p>
+<form id="addVehicleForm" onsubmit="return false"><div class="modal-grid">
+<div><input id="addVehicleNumber" maxlength="15" placeholder="Vehicle Number (e.g. KL01AB1234)"></div>
+<div><input id="addMobileNumber" maxlength="10" inputmode="numeric" placeholder="10-digit Mobile Number"></div>
+<div><input id="addVehicleName" placeholder="Vehicle Name"></div>
+<div><input id="addFuelType" placeholder="Fuel Type"></div>
+<div><select id="addValidity"><option value="">Select Validity</option><option value="6 month">6 Month</option><option value="1 year">1 Year</option></select></div>
+<div class="full"><textarea id="addRemarks" rows="3" placeholder="Remarks (optional)"></textarea></div>
+</div></form><div id="addVehicleError" class="modal-error"></div>
+<div class="modal-actions"><button id="addVehicleCancel" class="secondary">Cancel</button><button id="addVehicleSave" class="primary">Save Vehicle</button></div></div></div>
 
 <main class="container">
   <div class="section-kicker">OVERVIEW</div>
@@ -125,6 +151,8 @@ body.smogcert-locked>footer{display:none!important}
       <button type="button" id="vehicleRecordsView" class="btn records-btn">📋 Vehicle Records</button>
       <button type="button" id="pdfButton" class="btn pdf-btn" style="display:none">📄 Save All Data as PDF</button>
       <button type="button" id="refreshData" class="btn refresh-btn">🔄 Refresh Google Sheet</button>
+      <button type="button" id="addVehicleButton" class="btn add-btn">➕ Add New Vehicle</button>
+      <button type="button" id="changePasswordButton" class="btn password-btn">🔑 Change Password</button>
     </div>
   </section>
 
