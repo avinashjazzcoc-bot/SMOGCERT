@@ -1,262 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pollution Certificate Reminder System</title>
-
-    <!-- Your existing style.css -->
-    <link rel="stylesheet" href="style.css">
-
-    <style>
-        /* Small compatibility styles for the Google Sheets version */
-        .toolbar {
-            display:flex;
-            gap:12px;
-            margin:18px 0;
-            align-items:center;
-        }
-
-        .refresh-btn {
-            border:0;
-            border-radius:8px;
-            padding:11px 20px;
-            background:#1976d2;
-            color:white;
-            cursor:pointer;
-            font-size:15px;
-        }
-
-        .refresh-btn:hover {
-            background:#125eaa;
-        }
-
-        .message {
-            min-height:22px;
-            text-align:center;
-            font-weight:600;
-            margin:8px 0;
-        }
-
-        .status-pending,
-        .status-done,
-        .status-cant,
-        .status-close,
-        .status-updated {
-            display:inline-block;
-            padding:5px 9px;
-            border-radius:12px;
-            font-size:12px;
-            font-weight:700;
-        }
-
-        .status-pending { background:#fff3cd; color:#856404; }
-        .status-done { background:#d4edda; color:#155724; }
-        .status-cant { background:#f8d7da; color:#721c24; }
-        .status-close { background:#e2e3e5; color:#383d41; }
-        .status-updated { background:#cce5ff; color:#004085; }
-
-        .days-normal { font-weight:700; }
-        .days-warning { color:#d97706; font-weight:800; }
-        .days-today { color:#dc2626; font-weight:900; }
-        .days-expired { color:#b91c1c; font-weight:900; }
-
-        .action-buttons {
-            display:flex;
-            flex-wrap:wrap;
-            gap:6px;
-        }
-
-        .action-buttons button {
-            border:0;
-            border-radius:6px;
-            padding:8px 10px;
-            color:white;
-            cursor:pointer;
-            font-size:12px;
-        }
-
-        .callDone { background:#198754; }
-        .cantConnect { background:#dc3545; }
-        .updateCase { background:#0d6efd; }
-        .closeCase { background:#6c757d; }
-
-        .action-buttons button:hover {
-            opacity:.88;
-        }
-
-        .table-wrap {
-            overflow-x:auto;
-        }
-
-        table {
-            width:100%;
-            border-collapse:collapse;
-        }
-
-        th, td {
-            padding:12px 10px;
-            text-align:left;
-            border-bottom:1px solid #e5e7eb;
-        }
-
-        th {
-            background:#1976d2;
-            color:white;
-        }
-
-        tr:hover td {
-            background:#f8fafc;
-        }
-
-        .search-box {
-            width:100%;
-            box-sizing:border-box;
-            padding:13px 14px;
-            border:1px solid #cbd5e1;
-            border-radius:8px;
-            font-size:16px;
-        }
-
-        .dashboard {
-            display:grid;
-            grid-template-columns:repeat(4, 1fr);
-            gap:18px;
-        }
-
-        .dashboard-card {
-            background:white;
-            border-radius:12px;
-            padding:20px;
-            text-align:center;
-            box-shadow:0 3px 12px rgba(0,0,0,.10);
-        }
-
-        .dashboard-number {
-            font-size:36px;
-            font-weight:800;
-            color:#1769aa;
-        }
-
-        .dashboard-label {
-            margin-top:5px;
-            font-size:16px;
-        }
-
-        @media (max-width:800px) {
-            .dashboard {
-                grid-template-columns:repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width:500px) {
-            .dashboard {
-                grid-template-columns:1fr;
-            }
-
-            th, td {
-                white-space:nowrap;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0877c9">
+<title>SMOGCERT SOLUTIONS | Smart Reminder Dashboard</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,#edf9ff,#f4f7fb);color:#102b4d}
+.top-header{background:linear-gradient(100deg,#092c55,#0877c9);color:#fff;padding:20px 4%;display:flex;justify-content:space-between;align-items:center;min-height:94px;box-shadow:0 5px 20px #153c5c30}
+.brand-wrap{display:flex;align-items:center;gap:14px}.brand-logo{width:54px;height:54px;border-radius:17px;background:linear-gradient(135deg,#14b9e8,#0877c9);display:grid;place-items:center;font-weight:900;font-size:20px}.brand-name{font-size:32px;letter-spacing:.5px}.brand-name span{font-weight:400}.brand-tagline{font-size:13px;margin-top:4px;color:#d9edff}
+.top-tools{display:flex;align-items:center}.quick-links{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.quick-link{color:#fff;text-decoration:none;text-align:center;min-width:76px;padding:7px 8px;border:1px solid #ffffff40;border-radius:14px;background:#ffffff12;backdrop-filter:blur(5px);transition:.2s}
+.quick-link:hover{background:#fff;color:#075da0;transform:translateY(-2px)}
+.quick-icon{display:block;font-size:25px;margin-bottom:2px}.quick-link span:last-child{font-size:11px;font-weight:700}
+.container{max-width:1280px;margin:0 auto;padding:34px 22px 55px}.section-kicker{font-size:12px;letter-spacing:2px;font-weight:900;color:#0877c9}.page-title{margin:5px 0 16px;font-size:25px}
+.dashboard{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:10px}.dashboard-small{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px;max-width:620px}
+.dashboard-card{background:#fff;border-radius:14px;padding:20px;min-height:112px;text-align:center;box-shadow:0 5px 18px #143c5a18;border-left:5px solid #1680d0}.dashboard-card.due{border-left-color:#f59e0b}.dashboard-card.urgent{border-left-color:#ef4444}.dashboard-card.expired{border-left-color:#991b1b}.dashboard-card.done{border-left-color:#16a34a}.dashboard-card.cant{border-left-color:#dc2626}
+.dashboard-number{font-size:34px;font-weight:900;color:#1769aa}.dashboard-label{font-size:15px;margin-top:5px;font-weight:600}
+.controls{background:#fff;border-radius:15px;padding:16px;box-shadow:0 5px 18px #143c5a14;margin-bottom:20px}.search-box{width:100%;padding:14px 15px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;outline:none}.search-box:focus{border-color:#0877c9;box-shadow:0 0 0 3px #0877c91a}
+.toolbar,.records-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px}.btn{border:0;border-radius:9px;padding:11px 15px;font-weight:800;cursor:pointer}.refresh-btn{background:#147bd1;color:#fff}.records-btn{background:#e8f2fb;color:#075b99}.records-btn.active{background:#0877c9;color:#fff}.pdf-btn{background:#dc2626;color:#fff}
+.table-card{background:#fff;border-radius:15px;overflow:hidden;box-shadow:0 5px 18px #143c5a18}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1050px}th{background:#0877c9;color:#fff;padding:13px 10px;text-align:left;font-size:13px}td{padding:12px 10px;border-bottom:1px solid #e5eaf0;font-size:13px}tr:hover td{background:#f7fbff}
+.record-expiry{display:inline-block;padding:5px 9px;border-radius:20px;font-weight:800;font-size:11px}.expiry-valid{background:#dcfce7;color:#166534}.expiry-due{background:#fef3c7;color:#92400e}.expiry-urgent{background:#fee2e2;color:#b91c1c}.expiry-expired{background:#7f1d1d;color:#fff}
+.days-valid{color:#15803d;font-weight:900}.days-due{color:#d97706;font-weight:900}.days-urgent{color:#dc2626;font-weight:900}.days-expired{color:#991b1b;font-weight:900}
+.action-buttons{display:flex;gap:5px;flex-wrap:wrap}.action-buttons button{border:0;border-radius:7px;padding:7px 9px;color:#fff;font-size:11px;font-weight:800;cursor:pointer}.callDone{background:#16a34a}.cantConnect{background:#dc2626}.renew{background:#0877c9}.closeCase{background:#64748b}
+.pdf-title{display:none}
+@media(max-width:900px){.top-header{align-items:flex-start;gap:12px}.quick-links{display:none}.dashboard{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.brand-name{font-size:23px}.dashboard{grid-template-columns:1fr}.dashboard-small{grid-template-columns:1fr}.container{padding:22px 12px}}
+@media print{body{background:#fff}.top-header,.controls,.dashboard,.dashboard-small,.no-print{display:none!important}.container{padding:0}.pdf-title{display:block;text-align:center}.table-card{box-shadow:none}.table-wrap{overflow:visible}table{min-width:0;font-size:9px}th,td{padding:5px}}
+</style>
 </head>
-
 <body>
-
-<header class="header">
-    <h1>🚗 Pollution Certificate Reminder System</h1>
-    <p>Upcoming Pollution Certificate Expiry (Next 10 Days)</p>
+<header class="top-header">
+  <div class="brand-wrap">
+    <div class="brand-logo">SC</div>
+    <div>
+      <div class="brand-name"><strong>SMOGCERT</strong> <span>SOLUTIONS</span></div>
+      <div class="brand-tagline">Pollution Certificate Reminder &amp; Vehicle Management</div>
+    </div>
+  </div>
+  <nav class="quick-links" aria-label="Useful vehicle service links">
+    <a class="quick-link" href="https://puc.parivahan.gov.in/puc/" target="_blank" rel="noopener"><span class="quick-icon">🚘</span><span>PUCC</span></a>
+    <a class="quick-link" href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/statevalidation/homepage.xhtml" target="_blank" rel="noopener"><span class="quick-icon">📱</span><span>Mobile</span></a>
+    <a class="quick-link" href="https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en" target="_blank" rel="noopener"><span class="quick-icon">🪪</span><span>Aadhaar</span></a>
+    <a class="quick-link" href="https://echallan.parivahan.gov.in/index/accused-challan" target="_blank" rel="noopener"><span class="quick-icon">🚨</span><span>eChallan</span></a>
+    <a class="quick-link" href="https://vahandetails.com" target="_blank" rel="noopener"><span class="quick-icon">🔎</span><span>Vehicle</span></a>
+  </nav>
 </header>
 
 <main class="container">
+  <div class="section-kicker">OVERVIEW</div>
+  <h1 class="page-title">Vehicle Dashboard</h1>
 
-    <section class="dashboard">
+  <section class="dashboard">
+    <div class="dashboard-card"><div class="dashboard-number" id="totalVehicles">0</div><div class="dashboard-label">Valid Vehicles</div></div>
+    <div class="dashboard-card due"><div class="dashboard-number" id="dueVehicles">0</div><div class="dashboard-label">Due in 10 Days</div></div>
+    <div class="dashboard-card urgent"><div class="dashboard-number" id="urgentVehicles">0</div><div class="dashboard-label">Urgent</div></div>
+    <div class="dashboard-card expired"><div class="dashboard-number" id="expiredVehicles">0</div><div class="dashboard-label">Expired</div></div>
+  </section>
+  <section class="dashboard-small">
+    <div class="dashboard-card done"><div class="dashboard-number" id="callDone">0</div><div class="dashboard-label">Call Done</div></div>
+    <div class="dashboard-card cant"><div class="dashboard-number" id="cantConnect">0</div><div class="dashboard-label">Can't Connect</div></div>
+  </section>
 
-        <div class="dashboard-card">
-            <div class="dashboard-number" id="totalVehicles">0</div>
-            <div class="dashboard-label">Total Vehicles</div>
-        </div>
+  <section class="controls">
+    <input id="searchInput" class="search-box" type="text" placeholder="Search Registration Number / Phone Number / Vehicle Name" autocomplete="off">
+    <div class="records-toolbar no-print">
+      <button type="button" id="upcomingView" class="btn records-btn active">🔔 Expired &amp; Soon Expiring</button>
+      <button type="button" id="vehicleRecordsView" class="btn records-btn">📋 Vehicle Records</button>
+      <button type="button" id="pdfButton" class="btn pdf-btn" style="display:none">📄 Save All Data as PDF</button>
+      <button type="button" id="refreshData" class="btn refresh-btn">🔄 Refresh Google Sheet</button>
+    </div>
+  </section>
 
-        <div class="dashboard-card">
-            <div class="dashboard-number" id="dueVehicles">0</div>
-            <div class="dashboard-label">Due in 10 Days</div>
-        </div>
-
-        <div class="dashboard-card">
-            <div class="dashboard-number" id="callDone">0</div>
-            <div class="dashboard-label">Call Done</div>
-        </div>
-
-        <div class="dashboard-card">
-            <div class="dashboard-number" id="cantConnect">0</div>
-            <div class="dashboard-label">Can't Connect</div>
-        </div>
-
-    </section>
-
-    <section class="controls">
-
-        <input
-            type="text"
-            id="searchInput"
-            class="search-box"
-            placeholder="Search Registration Number / Phone Number / Vehicle Name"
-            autocomplete="off"
-        >
-
-        <div class="records-toolbar no-print">
-<button type="button" id="upcomingView" class="records-btn active">🔔 Expired &amp; Soon Expiring</button>
-<button type="button" id="vehicleRecordsView" class="records-btn">📋 Vehicle Records</button>
-<button type="button" id="pdfButton" class="pdf-btn" style="display:none;">📄 Save All Data as PDF</button>
-</div><div class="toolbar">
-            <button
-                type="button"
-                id="refreshData"
-                class="refresh-btn">
-                🔄 Refresh Google Sheet
-            </button>
-
-            <div id="message" class="message"></div>
-        </div>
-
-    </section>
-
-    <section class="table-card">
-
-        <div class="table-wrap">
-
-            <table>
-
-                <thead>
-                    <tr>
-                        <th>Registration No</th>
-                        <th>Phone</th>
-                        <th>PUCC Expiry</th>
-                        <th>Days Left</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-
-                <tbody id="tableBody">
-
-                    <tr>
-                        <td colspan="6" style="text-align:center;">
-                            Loading vehicles...
-                        </td>
-                    </tr>
-
-                </tbody>
-
-            </table>
-
-        </div>
-
-    </section>
-
+  <div class="pdf-title"><h2>SMOGCERT SOLUTIONS — Complete Vehicle Records</h2><p>All Google Sheet vehicle data</p></div>
+  <section class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Registration No</th><th>Phone</th><th>Vehicle Name</th><th>Fuel Type</th>
+          <th>PUCC Expiry</th><th>Days Left</th><th>Expiry Status</th><th>Record Status</th><th>Action</th>
+        </tr></thead>
+        <tbody id="tableBody"><tr><td colspan="9" style="text-align:center;padding:30px">Loading vehicles...</td></tr></tbody>
+      </table>
+    </div>
+  </section>
 </main>
-
-<script src="script.js?v=20260816-3"></script>
-
+<script src="script.js?v=20260816-4"></script>
 </body>
 </html>
