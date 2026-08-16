@@ -1,261 +1,262 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SMOGCERT SOLUTIONS | Smart Reminder Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollution Certificate Reminder System</title>
+
+    <!-- Your existing style.css -->
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* Small compatibility styles for the Google Sheets version */
+        .toolbar {
+            display:flex;
+            gap:12px;
+            margin:18px 0;
+            align-items:center;
+        }
+
+        .refresh-btn {
+            border:0;
+            border-radius:8px;
+            padding:11px 20px;
+            background:#1976d2;
+            color:white;
+            cursor:pointer;
+            font-size:15px;
+        }
+
+        .refresh-btn:hover {
+            background:#125eaa;
+        }
+
+        .message {
+            min-height:22px;
+            text-align:center;
+            font-weight:600;
+            margin:8px 0;
+        }
+
+        .status-pending,
+        .status-done,
+        .status-cant,
+        .status-close,
+        .status-updated {
+            display:inline-block;
+            padding:5px 9px;
+            border-radius:12px;
+            font-size:12px;
+            font-weight:700;
+        }
+
+        .status-pending { background:#fff3cd; color:#856404; }
+        .status-done { background:#d4edda; color:#155724; }
+        .status-cant { background:#f8d7da; color:#721c24; }
+        .status-close { background:#e2e3e5; color:#383d41; }
+        .status-updated { background:#cce5ff; color:#004085; }
+
+        .days-normal { font-weight:700; }
+        .days-warning { color:#d97706; font-weight:800; }
+        .days-today { color:#dc2626; font-weight:900; }
+        .days-expired { color:#b91c1c; font-weight:900; }
+
+        .action-buttons {
+            display:flex;
+            flex-wrap:wrap;
+            gap:6px;
+        }
+
+        .action-buttons button {
+            border:0;
+            border-radius:6px;
+            padding:8px 10px;
+            color:white;
+            cursor:pointer;
+            font-size:12px;
+        }
+
+        .callDone { background:#198754; }
+        .cantConnect { background:#dc3545; }
+        .updateCase { background:#0d6efd; }
+        .closeCase { background:#6c757d; }
+
+        .action-buttons button:hover {
+            opacity:.88;
+        }
+
+        .table-wrap {
+            overflow-x:auto;
+        }
+
+        table {
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th, td {
+            padding:12px 10px;
+            text-align:left;
+            border-bottom:1px solid #e5e7eb;
+        }
+
+        th {
+            background:#1976d2;
+            color:white;
+        }
+
+        tr:hover td {
+            background:#f8fafc;
+        }
+
+        .search-box {
+            width:100%;
+            box-sizing:border-box;
+            padding:13px 14px;
+            border:1px solid #cbd5e1;
+            border-radius:8px;
+            font-size:16px;
+        }
+
+        .dashboard {
+            display:grid;
+            grid-template-columns:repeat(4, 1fr);
+            gap:18px;
+        }
+
+        .dashboard-card {
+            background:white;
+            border-radius:12px;
+            padding:20px;
+            text-align:center;
+            box-shadow:0 3px 12px rgba(0,0,0,.10);
+        }
+
+        .dashboard-number {
+            font-size:36px;
+            font-weight:800;
+            color:#1769aa;
+        }
+
+        .dashboard-label {
+            margin-top:5px;
+            font-size:16px;
+        }
+
+        @media (max-width:800px) {
+            .dashboard {
+                grid-template-columns:repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width:500px) {
+            .dashboard {
+                grid-template-columns:1fr;
+            }
+
+            th, td {
+                white-space:nowrap;
+            }
+        }
+    </style>
 </head>
 
 <body>
 
-<header class="top-header">
-  <div class="brand-wrap">
-    <div class="brand-logo">SC</div>
-    <div>
-      <div class="brand-name"><strong>SMOGCERT</strong> <span>SOLUTIONS</span></div>
-      <div class="brand-tagline">Pollution Certificate Reminder &amp; Vehicle Management</div>
-    </div>
-  </div>
-  <div class="top-tools">
-    <nav class="quick-links" aria-label="Useful vehicle service links">
-      <a class="quick-link" href="https://puc.parivahan.gov.in/puc/" target="_blank" rel="noopener noreferrer" title="Open PUCC">
-        <span class="quick-icon">📄</span>
-        <span>PUCC</span>
-      </a>
-      <a class="quick-link" href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/statevalidation/homepage.xhtml" target="_blank" rel="noopener noreferrer" title="Open Vahan service">
-        <span class="quick-icon">📱</span>
-        <span>Mobile Update</span>
-      </a>
-      <a class="quick-link" href="https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en" target="_blank" rel="noopener noreferrer" title="Check Aadhaar validity">
-        <span class="quick-icon">🪪</span>
-        <span>Aadhaar</span>
-      </a>
-      <a class="quick-link" href="https://echallan.parivahan.gov.in/index/accused-challan" target="_blank" rel="noopener noreferrer" title="Open eChallan">
-        <span class="quick-icon">🚨</span>
-        <span>eChallan</span>
-      </a>
-      <a class="quick-link" href="https://vahandetails.com" target="_blank" rel="noopener noreferrer" title="Open vehicle details">
-        <span class="quick-icon">🚗</span>
-        <span>Vehicle Details</span>
-      </a>
-      <a class="quick-link sheet-link" href="https://docs.google.com/spreadsheets/d/1S8a5kqVttJa7TSijjkEUzmL-F7rc039LHltu7rCi5j0/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Open Google Sheet">
-        <span class="quick-icon">📊</span>
-        <span>Google Sheet</span>
-      </a>
-    </nav>
-    <div class="header-pill">🚗 Smart Reminder Dashboard</div>
-  </div>
+<header class="header">
+    <h1>🚗 Pollution Certificate Reminder System</h1>
+    <p>Upcoming Pollution Certificate Expiry (Next 10 Days)</p>
 </header>
 
 <main class="container">
 
-  <section class="overview-head">
-    <div>
-      <div class="eyebrow">OVERVIEW</div>
-      <h1>Vehicle Dashboard</h1>
-    </div>
-    <div class="live-pill"><span></span> Live Google Sheets Data</div>
-  </section>
+    <section class="dashboard">
 
-  <section class="dashboard main-dashboard">
-
-    <div class="dashboard-card total-card">
-      <div class="dashboard-number" id="totalVehicles">0</div>
-      <div class="dashboard-label">Valid Vehicles</div>
-    </div>
-
-    <div class="dashboard-card due-card">
-      <div class="dashboard-number" id="dueVehicles">0</div>
-      <div class="dashboard-label">Due in 10 Days</div>
-    </div>
-
-    <div class="dashboard-card urgent-card">
-      <div class="dashboard-number" id="urgentVehicles">0</div>
-      <div class="dashboard-label">Urgent</div>
-    </div>
-
-    <div class="dashboard-card expired-card">
-      <div class="dashboard-number" id="expiredVehicles">0</div>
-      <div class="dashboard-label">Expired</div>
-    </div>
-
-  </section>
-
-  <section class="work-dashboard">
-    <div class="work-card done-card">
-      <div class="work-number" id="callDone">0</div>
-      <div class="work-label">Call Done</div>
-    </div>
-    <div class="work-card cant-card">
-      <div class="work-number" id="cantConnect">0</div>
-      <div class="work-label">Can't Connect</div>
-    </div>
-  </section>
-
-  <section class="controls">
-    <div class="search-wrap">
-      <input type="search" id="vehicleSearch" class="vehicle-search"
-             placeholder="Search Registration Number / Phone Number / Vehicle Name"
-             autocomplete="off">
-      <button type="button" id="clearSearch" class="clear-search-btn" title="Clear search">✕</button>
-    </div>
-    <div class="toolbar">
-      <button type="button" id="refreshData" class="refresh-btn">↻ &nbsp;Refresh Google Sheet</button>
-      <div id="searchResultCount" class="search-result-count"></div>
-      <div id="message" class="message"></div>
-    </div>
-  </section>
-
-  <section class="manual-add-card" id="manualAddVehicleCard">
-    <div class="manual-add-header">
-      <div class="add-title-wrap">
-        <div class="add-symbol">＋</div>
-        <div>
-          <div class="manual-add-title">Add New Vehicle</div>
-          <div class="manual-add-subtitle">Enter a vehicle manually and save it directly to Google Sheets.</div>
-        </div>
-      </div>
-      <button type="button" id="toggleAddVehicle" class="add-toggle-btn">Add Vehicle</button>
-    </div>
-
-    <form id="addVehicleForm" class="manual-form" style="display:none;">
-      <div class="manual-grid">
-        <div>
-          <label>Registration Number *</label>
-          <input id="newVehicleNumber" type="text" required maxlength="20"
-                 placeholder="KL01AB1234" autocomplete="off">
-          <small>Only A–Z and 0–9. Automatically converted to CAPITAL letters.</small>
+        <div class="dashboard-card">
+            <div class="dashboard-number" id="totalVehicles">0</div>
+            <div class="dashboard-label">Total Vehicles</div>
         </div>
 
-        <div>
-          <label>Mobile Number *</label>
-          <input id="newMobileNumber" type="tel" required maxlength="10"
-                 inputmode="numeric" placeholder="9876543210" autocomplete="off">
-          <small>Exactly 10 digits.</small>
+        <div class="dashboard-card">
+            <div class="dashboard-number" id="dueVehicles">0</div>
+            <div class="dashboard-label">Due in 10 Days</div>
         </div>
 
-        <div>
-          <label>Vehicle Name</label>
-          <input id="newVehicleName" type="text" placeholder="Car / Bike / Auto">
+        <div class="dashboard-card">
+            <div class="dashboard-number" id="callDone">0</div>
+            <div class="dashboard-label">Call Done</div>
         </div>
 
-        <div>
-          <label>Fuel Type</label>
-          <select id="newFuelType">
-            <option value="">Select</option>
-            <option>Petrol</option>
-            <option>Diesel</option>
-            <option>CNG</option>
-            <option>Electric</option>
-            <option>Other</option>
-          </select>
+        <div class="dashboard-card">
+            <div class="dashboard-number" id="cantConnect">0</div>
+            <div class="dashboard-label">Can't Connect</div>
         </div>
 
-        <div>
-          <label>PUCC Validity *</label>
-          <select id="newValidity" required>
-            <option value="">Select validity</option>
-            <option value="6 month">6 Months</option>
-            <option value="1 year">1 Year</option>
-          </select>
+    </section>
+
+    <section class="controls">
+
+        <input
+            type="text"
+            id="searchInput"
+            class="search-box"
+            placeholder="Search Registration Number / Phone Number / Vehicle Name"
+            autocomplete="off"
+        >
+
+        <div class="records-toolbar no-print">
+<button type="button" id="upcomingView" class="records-btn active">🔔 Expired &amp; Soon Expiring</button>
+<button type="button" id="vehicleRecordsView" class="records-btn">📋 Vehicle Records</button>
+<button type="button" id="pdfButton" class="pdf-btn" style="display:none;">📄 Save All Data as PDF</button>
+</div><div class="toolbar">
+            <button
+                type="button"
+                id="refreshData"
+                class="refresh-btn">
+                🔄 Refresh Google Sheet
+            </button>
+
+            <div id="message" class="message"></div>
         </div>
 
-        <div>
-          <label>Remarks</label>
-          <input id="newRemarks" type="text" placeholder="Optional">
+    </section>
+
+    <section class="table-card">
+
+        <div class="table-wrap">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Registration No</th>
+                        <th>Phone</th>
+                        <th>PUCC Expiry</th>
+                        <th>Days Left</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tableBody">
+
+                    <tr>
+                        <td colspan="6" style="text-align:center;">
+                            Loading vehicles...
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
         </div>
-      </div>
 
-      <div id="newVehiclePreview" class="new-expiry-preview"></div>
-
-      <div class="manual-actions">
-        <button type="submit" class="save-new-btn">✓ Save Vehicle</button>
-        <button type="button" id="cancelAddVehicle" class="cancel-new-btn">Cancel</button>
-      </div>
-    </form>
-  </section>
-
-  <section class="table-card">
-    <div class="table-title-row">
-      <div>
-        <h2>Vehicle Records</h2>
-        <p id="tableDescription">Showing only today, next 10 days and expired vehicles.</p>
-      </div>
-      <div class="record-view-actions no-print">
-        <button type="button" id="upcomingView" class="view-btn active">🔔 Upcoming &amp; Expired</button>
-        <button type="button" id="vehicleRecordsView" class="view-btn">📋 Vehicle Records</button>
-        <button type="button" id="pdfButton" class="pdf-btn" style="display:none">📄 Save All Data as PDF</button>
-      </div>
-    </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Registration No</th>
-            <th>Phone</th>
-            <th>PUCC Expiry</th>
-            <th>Days Left</th>
-            <th>Expiry Status</th>
-            <th>Work Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-
-        <tbody id="tableBody">
-          <tr>
-            <td colspan="7" class="loading-cell">Loading vehicles...</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section id="printArea" class="print-area"></section>
+    </section>
 
 </main>
 
-<!-- RENEW VEHICLE POPUP -->
-<div id="renewModal" class="modal-backdrop" aria-hidden="true">
-  <div class="renew-modal" role="dialog" aria-modal="true" aria-labelledby="renewTitle">
-    <div class="modal-head">
-      <div>
-        <div class="modal-kicker">VEHICLE RENEWAL</div>
-        <h2 id="renewTitle">🔄 Renew Vehicle</h2>
-      </div>
-      <button type="button" class="modal-close" id="renewClose" aria-label="Close">×</button>
-    </div>
+<script src="script.js?v=20260816-3"></script>
 
-    <div class="modal-body">
-      <div class="vehicle-summary">
-        <div class="summary-reg" id="renewVehicleNumber">—</div>
-        <div class="summary-info" id="renewVehicleInfo">—</div>
-      </div>
-
-      <div class="form-field">
-        <label for="renewValidity">New PUCC Validity</label>
-        <select id="renewValidity">
-          <option value="6 month">6 Months</option>
-          <option value="1 year">1 Year</option>
-        </select>
-      </div>
-
-      <div id="renewPreview" class="renew-preview">New PUCC expiry: —</div>
-
-      <div class="form-field">
-        <label for="renewRemarks">Remarks</label>
-        <textarea id="renewRemarks" rows="3" placeholder="Optional remarks"></textarea>
-      </div>
-
-      <div class="modal-actions">
-        <button type="button" class="btn-cancel" id="renewCancel">Cancel</button>
-        <button type="button" class="btn-confirm" id="renewConfirm">✓ Confirm Renewal</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="script.js"></script>
 </body>
 </html>
