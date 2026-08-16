@@ -1,617 +1,697 @@
-// ======================================================
-// POLLUTION REMINDER SYSTEM - GOOGLE SHEETS VERSION
-// Updated for:
-// 6 month / 1 year validity periods
-// Update creates a NEW record
-// ======================================================
+const API_URL = "https://script.google.com/macros/s/AKfycbyEzpHlOxi_ovC7WNvu08U_pT4Q0ryU5zM6lPxTdGbeHtXzEJK0zJikqbyuyrQenadvXQ/exec";
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/1S8a5kqVttJa7TSijjkEUzmL-F7rc039LHltu7rCi5j0/edit?gid=1544491919#gid=1544491919";
+const SESSION_KEY = "smogcert_token";
 
-const API_URL =
-"https://script.google.com/macros/s/AKfycbwBTQDO6XKogjzLnJfo-PQSUissGMED1WFVpGKQRaY400OL6N9ntfTQezavI9kpCOuMvA/exec";
-
-const tableBody = document.getElementById("tableBody");
-const searchInput = document.getElementById("searchInput");
-
+let sessionToken = sessionStorage.getItem(SESSION_KEY) || "";
 let vehicleData = [];
+let currentView = "upcoming";
+let currentFilter = "";
+let currentPage = 1;
+const PAGE_SIZE = 5;
 
-document.addEventListener("DOMContentLoaded", function () {
+const $ = id => document.getElementById(id);
+const tableBody = $("tableBody");
+
+document.addEventListener("DOMContentLoaded", () => {
+  bindUI();
+  if (sessionToken) {
+    unlockUI();
     loadVehicles();
-
-    if (searchInput) {
-        searchInput.addEventListener("input", function () {
-            displayVehicles(vehicleData);
-        });
-    }
-
-    const refreshButton = document.getElementById("refreshData");
-    if (refreshButton) {
-        refreshButton.addEventListener("click", loadVehicles);
-    }
+  } else {
+    lockUI();
+  }
 });
 
-async function loadVehicles() {
-    if (!tableBody) return;
-
-    tableBody.innerHTML = `
-        <tr><td colspan="6" style="text-align:center;padding:25px;">
-        Loading vehicles...
-        </td></tr>`;
-
-    try {
-        const response = await fetch(
-            API_URL + "?action=getVehicles&_=" + Date.now(),
-            { cache: "no-store" }
-        );
-
-        const result = await response.json();
-
-        if (!result.success) {
-            throw new Error(result.message || "Could not load data.");
-        }
-
-        vehicleData = result.vehicles || [];
-        displayVehicles(vehicleData);
-        updateDashboard(vehicleData);
-
-    } catch (error) {
-        console.error(error);
-
-        tableBody.innerHTML = `
-            <tr><td colspan="6" style="text-align:center;color:red;padding:25px;">
-            Unable to load Google Sheet data.<br>
-            ${escapeHtml(error.message)}
-            </td></tr>`;
-    }
+function lockUI(message = "") {
+  document.body.classList.add("locked");
+  $("loginGate").style.display = "flex";
+  $("loginError").textContent = message;
 }
 
-function getVehicleValue(vehicle, names) {
-    const keys = Object.keys(vehicle || {});
+function unlockUI() {
+  document.body.classList.remove("locked");
+  $("loginGate").style.display = "none";
+}
 
-    for (const wanted of names) {
-        const exact = keys.find(k =>
-            String(k).trim().toLowerCase() ===
-            String(wanted).trim().toLowerCase()
-        );
+function logout() {
+  sessionToken = "";
+  sessionStorage.removeItem(SESSION_KEY);
+  vehicleData = [];
+  lockUI("");
+}
 
-        if (exact !== undefined &&
-            vehicle[exact] !== undefined &&
-            vehicle[exact] !== null &&
-            String(vehicle[exact]).trim() !== "") {
-            return vehicle[exact];
-        }
-    }
+async function apiPost(action, data = {}) {
+  const params = new URLSearchParams();
+  params.set("action", action);
+  if (action !== "login") params.set("token", sessionToken);
+  Object.entries(data).forEach(([k,v]) => params.set(k, v == null ? "" : String(v)));
 
-    return "";
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+    body: params.toString(),
+    cache: "no-store"
+  });
+
+  const result = await response.json();
+
+  if (result.code === "AUTH_REQUIRED") {
+    logout();
+    throw new Error("Session expired. Please log in again.");
+  }
+  return result;
+}
+
+async function login() {
+  const username = $("loginUser").value.trim();
+  const password = $("loginPass").value;
+
+  $("loginError").textContent = "";
+
+  if (!username || !password) {
+    $("loginError").textContent = "Enter username and password.";
+    return;
+  }
+
+  $("loginBtn").disabled = true;
+  $("loginLoader").classList.add("show");
+
+  try {
+    const result = await apiPost("login", {username, password});
+    if (!result.success) throw new Error(result.message || "Login failed.");
+
+    sessionToken = result.token;
+    sessionStorage.setItem(SESSION_KEY, sessionToken);
+    $("loginPass").value = "";
+
+    unlockUI();
+    await loadVehicles();
+  } catch (e) {
+    lockUI(e.message);
+  } finally {
+    $("loginLoader").classList.remove("show");
+    $("loginBtn").disabled = false;
+  }
+}
+
+async function loadVehicles() {
+  tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px">Loading Google Sheet data...</td></tr>';
+  try {
+    const result = await apiPost("getVehicles");
+    if (!result.success) throw new Error(result.message || "Unable to load data.");
+    vehicleData = Array.isArray(result.vehicles) ? result.vehicles : [];
+    updateDashboard();
+    renderVehicles();
+  } catch (e) {
+    tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:#dc2626;padding:30px">${escapeHtml(e.message)}</td></tr>`;
+  }
 }
 
 function parseDate(value) {
-    if (!value) return null;
-
-    if (value instanceof Date && !isNaN(value.getTime())) {
-        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-    }
-
-    const text = String(value).trim();
-
-    let m = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (m) {
-        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    }
-
-    m = text.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
-    if (m) {
-        return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-    }
-
-    const d = new Date(text);
-    if (!isNaN(d.getTime())) {
-        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    }
-
-    return null;
+  if (!value) return null;
+  const text = String(value).trim();
+  let m = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = text.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  const d = new Date(text);
+  if (isNaN(d.getTime())) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
-// Timestamp + validity period
-function calculateExpiry(timestamp, validity) {
-    const start = parseDate(timestamp);
-    if (!start) return null;
+function calculateExpiry(timestamp, validUpto) {
+  // New records may store the actual expiry date in Valid Upto.
+  const directDate = parseDate(validUpto);
+  if (directDate) return directDate;
 
-    const text = String(validity || "").trim().toLowerCase();
+  // Older records may store "6 month" / "1 year" in Valid Upto.
+  const start = parseDate(timestamp);
+  if (!start) return null;
 
-    const expiry = new Date(
-        start.getFullYear(),
-        start.getMonth(),
-        start.getDate()
-    );
+  const text = String(validUpto || "").trim().toLowerCase();
+  const expiry = new Date(start.getFullYear(), start.getMonth(), start.getDate());
 
-    if (
-        text === "6 month" ||
-        text === "6 months" ||
-        text === "6m"
-    ) {
-        expiry.setMonth(expiry.getMonth() + 6);
-        return expiry;
-    }
+  if (text === "6 month" || text === "6 months" || text === "6m") {
+    expiry.setMonth(expiry.getMonth() + 6);
+    return expiry;
+  }
 
-    if (
-        text === "1 year" ||
-        text === "1 years" ||
-        text === "12 month" ||
-        text === "12 months" ||
-        text === "1y"
-    ) {
-        expiry.setFullYear(expiry.getFullYear() + 1);
-        return expiry;
-    }
+  if (
+    text === "1 year" || text === "1 years" ||
+    text === "12 month" || text === "12 months" || text === "1y"
+  ) {
+    expiry.setFullYear(expiry.getFullYear() + 1);
+    return expiry;
+  }
 
-    const monthMatch = text.match(/(\d+)\s*months?/);
-    if (monthMatch) {
-        expiry.setMonth(
-            expiry.getMonth() + Number(monthMatch[1])
-        );
-        return expiry;
-    }
+  const monthMatch = text.match(/(\d+)\s*months?/);
+  if (monthMatch) {
+    expiry.setMonth(expiry.getMonth() + Number(monthMatch[1]));
+    return expiry;
+  }
 
-    const yearMatch = text.match(/(\d+)\s*years?/);
-    if (yearMatch) {
-        expiry.setFullYear(
-            expiry.getFullYear() + Number(yearMatch[1])
-        );
-        return expiry;
-    }
+  const yearMatch = text.match(/(\d+)\s*years?/);
+  if (yearMatch) {
+    expiry.setFullYear(expiry.getFullYear() + Number(yearMatch[1]));
+    return expiry;
+  }
 
-    return null;
+  return null;
 }
 
-function formatDate(value) {
-    const d = value instanceof Date ? value : parseDate(value);
-    if (!d) return "";
+function daysLeftForVehicle(vehicle) {
+  const expiry = calculateExpiry(vehicle.timestamp, vehicle.validUpto);
+  if (!expiry) return null;
 
-    return String(d.getDate()).padStart(2, "0") +
-        "-" +
-        String(d.getMonth() + 1).padStart(2, "0") +
-        "-" +
-        d.getFullYear();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((expiry - today) / 86400000);
 }
 
-function getDaysLeft(expiry) {
-    if (!expiry) return null;
-
-    const now = new Date();
-    const today = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate()
-    );
-
-    return Math.round((expiry - today) / 86400000);
+function formatExpiryForVehicle(vehicle) {
+  const expiry = calculateExpiry(vehicle.timestamp, vehicle.validUpto);
+  if (!expiry) return String(vehicle.validUpto || "—");
+  return String(expiry.getDate()).padStart(2, "0") + "-" +
+    String(expiry.getMonth() + 1).padStart(2, "0") + "-" +
+    expiry.getFullYear();
 }
 
-function displayVehicles(data) {
-    if (!tableBody) return;
+function updateDashboard() {
+  let active = 0, urgent = 0, expired = 0, expiredFiveDays = 0;
+  let expiredOlderThanFive = 0, done = 0, cant = 0, closed = 0;
 
-    tableBody.innerHTML = "";
+  vehicleData.forEach(v => {
+    const status = String(v.status || "Pending").trim();
+    const lower = status.toLowerCase();
 
-    const search = searchInput
-        ? searchInput.value.trim().toLowerCase()
-        : "";
+    if (lower !== "closed") active++;
+    if (status === "Call Done") done++;
+    if (status === "Can't Connect") cant++;
+    if (lower === "closed") closed++;
 
-    let count = 0;
+    if (lower === "closed") return;
 
-    data.forEach(function (vehicle) {
+    const days = daysLeftForVehicle(v);
+    if (days === null) return;
 
-        const vehicleNumber = getVehicleValue(vehicle, [
-            "vehicleNumber",
-            "vehicle number",
-            "Registration Number"
-        ]);
+    if (days < 0) {
+      expired++;
+      if (days >= -5) expiredFiveDays++;
+      else expiredOlderThanFive++;
+    } else if (days <= 3) {
+      urgent++;
+    }
+  });
 
-        const mobileNumber = getVehicleValue(vehicle, [
-            "mobileNumber",
-            "mobile number",
-            "Contact Number"
-        ]);
+  if ($("totalVehicles")) $("totalVehicles").textContent = vehicleData.length;
+  $("urgentVehicles").textContent = urgent;
+  $("expiredVehicles").textContent = expired;
+  $("expiredFiveDays").textContent = expiredFiveDays;
+  $("expiredOlderThanFive").textContent = expiredOlderThanFive;
+  $("callDone").textContent = done;
+  $("cantConnect").textContent = cant;
+  $("closedVehicles").textContent = closed;
+}
 
-        const timestamp = getVehicleValue(vehicle, [
-            "timestamp",
-            "Timestamp"
-        ]);
+function renderVehicles() {
+  const search = $("searchInput").value.trim().toLowerCase();
+  const expiryFilter = $("expiryFilter") ? $("expiryFilter").value : "all";
+  const recordFilter = $("recordFilter") ? $("recordFilter").value : "all";
+  let list = vehicleData.slice();
 
-        const validity = getVehicleValue(vehicle, [
-            "validUpto",
-            "valid upto",
-            "valid up to"
-        ]);
+  if (search) {
+    list = list.filter(v => [v.vehicleNumber,v.mobileNumber,v.vehicleName,v.fuelType]
+      .join(" ").toLowerCase().includes(search));
+  }
 
-        const vehicleName = getVehicleValue(vehicle, [
-            "vehicleName",
-            "vehicle name"
-        ]);
-
-        const fuelType = getVehicleValue(vehicle, [
-            "fuelType",
-            "fuel type"
-        ]);
-
-        const status = String(
-            getVehicleValue(vehicle, ["status", "Status"]) ||
-            "Pending"
-        );
-
-        const rowNumber = Number(
-            getVehicleValue(vehicle, [
-                "rowNumber",
-                "row number"
-            ])
-        );
-
-        const searchable =
-            `${vehicleNumber} ${mobileNumber} ${vehicleName} ${fuelType}`
-            .toLowerCase();
-
-        if (search && !searchable.includes(search)) return;
-
-        // When there is no search, show only records due in next 10 days
-        if (!search) {
-            const expiry = calculateExpiry(timestamp, validity);
-            const days = getDaysLeft(expiry);
-
-            if (
-                status === "Closed" ||
-                status === "Call Done" ||
-                status === "Updated"
-            ) return;
-
-            if (days === null || days < 0 || days > 10) return;
-        }
-
-        count++;
-
-        const expiry = calculateExpiry(timestamp, validity);
-        const days = getDaysLeft(expiry);
-
-        let daysText = "—";
-        let daysClass = "";
-
-        if (days !== null) {
-            if (days < 0) {
-                daysText = "EXPIRED";
-                daysClass = "days-expired";
-            } else if (days === 0) {
-                daysText = "TODAY";
-                daysClass = "days-today";
-            } else {
-                daysText = days + (days === 1 ? " day" : " days");
-                daysClass = days <= 3
-                    ? "days-warning"
-                    : "days-normal";
-            }
-        }
-
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-            <td>${escapeHtml(vehicleNumber)}</td>
-            <td>${escapeHtml(mobileNumber)}</td>
-            <td>${expiry ? formatDate(expiry) : "—"}</td>
-            <td class="${daysClass}">${daysText}</td>
-            <td>${statusBadge(status)}</td>
-            <td>
-                <div class="action-buttons">
-                    <button class="callDone" type="button"
-                        onclick="markCallDone(${rowNumber})">
-                        Call Done
-                    </button>
-
-                    <button class="cantConnect" type="button"
-                        onclick="markCantConnect(${rowNumber})">
-                        Can't Connect
-                    </button>
-
-                    <button class="updateCase" type="button"
-                        onclick="updateVehicle(${rowNumber})">
-                        Update
-                    </button>
-
-                    <button class="closeCase" type="button"
-                        onclick="closeVehicle(${rowNumber})">
-                        Close
-                    </button>
-                </div>
-            </td>
-        `;
-
-        tableBody.appendChild(row);
+  if (expiryFilter !== "all") {
+    list = list.filter(v => {
+      const days = daysLeftForVehicle(v);
+      if (expiryFilter === "valid") return days !== null && days > 10;
+      if (expiryFilter === "soon") return days !== null && days >= 0 && days <= 10;
+      if (expiryFilter === "urgent") return days !== null && days >= 0 && days <= 3;
+      if (expiryFilter === "expired") return days !== null && days < 0;
+      return true;
     });
+  }
 
-    if (count === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align:center;padding:30px;">
-                ${search
-                    ? "No vehicle found."
-                    : "No vehicles are due within the next 10 days."}
-                </td>
-            </tr>`;
-    }
-}
+  if (recordFilter !== "all") {
+    list = list.filter(v => String(v.status || "Pending").toLowerCase() === recordFilter.toLowerCase());
+  }
 
-function statusBadge(status) {
-    let cls = "status-pending";
+  if (currentFilter) {
+    list = list.filter(v => {
+      const status = String(v.status || "Pending").trim();
+      const lower = status.toLowerCase();
+      const days = daysLeftForVehicle(v);
 
-    if (status === "Call Done") cls = "status-done";
-    if (status === "Can't Connect") cls = "status-cant";
-    if (status === "Closed") cls = "status-close";
-    if (status === "Updated") cls = "status-updated";
-
-    return `<span class="${cls}">${escapeHtml(status)}</span>`;
-}
-
-async function markCallDone(rowNumber) {
-    const remarks = prompt("Remarks (optional):");
-    if (remarks === null) return;
-
-    await sendAction("callDone", {
-        rowNumber: rowNumber,
-        remarks: remarks
+      if (currentFilter === "urgent") return lower !== "closed" && days !== null && days >= 0 && days <= 3;
+      if (currentFilter === "expired") return lower !== "closed" && days !== null && days < 0;
+      if (currentFilter === "callDone") return status === "Call Done";
+      if (currentFilter === "cantConnect") return status === "Can't Connect";
+      if (currentFilter === "closed") return lower === "closed";
+      if (currentFilter === "expired5") return lower !== "closed" && days !== null && days < 0 && days >= -5;
+      if (currentFilter === "expiredOlder") return lower !== "closed" && days !== null && days < -5;
+      return true;
     });
+    list.sort((a,b) => (daysLeftForVehicle(b) ?? -999999) - (daysLeftForVehicle(a) ?? -999999));
+  } else if (!search && expiryFilter === "all" && recordFilter === "all" && currentView === "upcoming") {
+    list = list.filter(v => {
+      const lower = String(v.status || "").trim().toLowerCase();
+      if (lower === "closed") return false;
+      const d = daysLeftForVehicle(v);
+      return d !== null && d <= 10;
+    });
+    list.sort((a,b) => (daysLeftForVehicle(b) ?? -999999) - (daysLeftForVehicle(a) ?? -999999));
+  } else {
+    list.sort((a,b) => {
+      const da = parseDate(a.timestamp) || new Date(0);
+      const db = parseDate(b.timestamp) || new Date(0);
+      return db - da;
+    });
+  }
+
+  const totalItems = list.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const pageList = list.slice(startIndex, startIndex + PAGE_SIZE);
+
+  if (!pageList.length) {
+    tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px">${search ? "No vehicle found." : "No vehicle records found."}</td></tr>`;
+    updatePagination(totalItems, totalPages, 0, 0);
+    return;
+  }
+
+  tableBody.innerHTML = pageList.map(v => {
+    const d = daysLeftForVehicle(v);
+    let label = "Valid", cls = "expiry-valid", daysCls = "days-valid";
+    if (d !== null && d < 0) { label = "Expired"; cls = "expiry-expired"; daysCls = "days-expired"; }
+    else if (d !== null && d <= 3) { label = "Urgent"; cls = "expiry-urgent"; daysCls = "days-urgent"; }
+    else if (d !== null && d <= 10) { label = "Soon Expiring"; cls = "expiry-due"; daysCls = "days-due"; }
+
+    const dayText = d === null ? "—" : d < 0 ? `${Math.abs(d)} days ago` : d === 0 ? "Today" : `${d} days`;
+
+    return `<tr>
+      <td><strong>${escapeHtml(v.vehicleNumber)}</strong></td>
+      <td>${escapeHtml(maskPhone(v.mobileNumber))}</td>
+      <td>${escapeHtml(v.vehicleName || "unknown")}</td>
+      <td>${escapeHtml(v.fuelType || "unknown")}</td>
+      <td>${escapeHtml(formatExpiryForVehicle(v))}</td>
+      <td class="${daysCls}">${dayText}</td>
+      <td><span class="record-expiry ${cls}">${label}</span></td>
+      <td>${escapeHtml(v.status || "Pending")}</td>
+      <td><div class="action-buttons">
+        <button class="callDone" onclick="markStatus('callDone',${Number(v.rowNumber)})">Call Done</button>
+        <button class="cantConnect" onclick="markStatus('cantConnect',${Number(v.rowNumber)})">Can't Connect</button>
+        <button class="renew" onclick="renewVehicle(${Number(v.rowNumber)})">Renew</button>
+        <button class="closeCase" onclick="markStatus('close',${Number(v.rowNumber)})">Close</button>
+      </div></td>
+    </tr>`;
+  }).join("");
+
+  updatePagination(totalItems, totalPages, startIndex + 1, Math.min(startIndex + PAGE_SIZE, totalItems));
 }
 
-async function markCantConnect(rowNumber) {
-    const remarks = prompt("Reason / remarks (optional):");
-    if (remarks === null) return;
-
-    await sendAction("cantConnect", {
-        rowNumber: rowNumber,
-        remarks: remarks
-    });
+function maskPhone(value) {
+  const s = String(value || "");
+  if (s.length <= 4) return s;
+  return "*".repeat(Math.max(0, s.length - 4)) + s.slice(-4);
 }
 
-async function closeVehicle(rowNumber) {
-    if (!confirm("Are you sure you want to close this reminder?")) {
-        return;
-    }
+function updatePagination(totalItems, totalPages, from, to) {
+  if ($("entriesInfo")) {
+    $("entriesInfo").textContent = totalItems
+      ? `Showing ${from} to ${to} of ${totalItems} entries`
+      : "Showing 0 entries";
+  }
 
-    const remarks = prompt("Closing remarks (optional):");
-    if (remarks === null) return;
+  const box = $("pagination");
+  if (!box) return;
+  box.innerHTML = "";
 
-    await sendAction("close", {
-        rowNumber: rowNumber,
-        remarks: remarks
-    });
-}
+  const add = (label, page, disabled=false, active=false) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.className = "page-btn" + (active ? " active" : "");
+    b.disabled = disabled;
+    b.onclick = () => {
+      currentPage = page;
+      renderVehicles();
+    };
+    box.appendChild(b);
+  };
 
-// ======================================================
-// UPDATE
-// Creates NEW record with today's timestamp
-// ======================================================
+  add("‹", currentPage - 1, currentPage <= 1);
 
-async function updateVehicle(rowNumber) {
+  let pages = [];
+  if (totalPages <= 5) {
+    pages = Array.from({length:totalPages}, (_,i)=>i+1);
+  } else {
+    pages = [1];
+    if (currentPage > 3) pages.push("...");
+    const lo = Math.max(2, currentPage - 1);
+    const hi = Math.min(totalPages - 1, currentPage + 1);
+    for (let p = lo; p <= hi; p++) pages.push(p);
+    if (currentPage < totalPages - 2) pages.push("...");
+    pages.push(totalPages);
+  }
 
-    const vehicle = vehicleData.find(function (item) {
-        return Number(
-            getVehicleValue(item, ["rowNumber", "row number"])
-        ) === Number(rowNumber);
-    });
-
-    if (!vehicle) {
-        alert("Vehicle record not found.");
-        return;
-    }
-
-    const vehicleNumber = getVehicleValue(vehicle, [
-        "vehicleNumber",
-        "vehicle number"
-    ]);
-
-    const choice = prompt(
-        "Vehicle: " + vehicleNumber +
-        "\n\nEnter new PUCC validity:\n\n" +
-        "1 = 6 month\n" +
-        "2 = 1 year"
-    );
-
-    if (choice === null) return;
-
-    let newValidity = "";
-
-    if (
-        choice.trim() === "1" ||
-        choice.trim().toLowerCase() === "6 month"
-    ) {
-        newValidity = "6 month";
-    } else if (
-        choice.trim() === "2" ||
-        choice.trim().toLowerCase() === "1 year"
-    ) {
-        newValidity = "1 year";
+  pages.forEach(p => {
+    if (p === "...") {
+      const s = document.createElement("span");
+      s.className = "page-ellipsis";
+      s.textContent = "...";
+      box.appendChild(s);
     } else {
-        alert("Please enter 1 for 6 month or 2 for 1 year.");
-        return;
+      add(String(p), p, false, p === currentPage);
+    }
+  });
+
+  add("›", currentPage + 1, currentPage >= totalPages);
+}
+
+async function markStatus(action,rowNumber) {
+  const remarks = prompt("Remarks (optional):", "");
+  if (remarks === null) return;
+  try {
+    const result = await apiPost(action, {rowNumber, remarks});
+    alert(result.message || "Saved.");
+    if (result.success) await loadVehicles();
+  } catch(e) { alert(e.message); }
+}
+
+async function renewVehicle(rowNumber) {
+  const choice = prompt("Enter new validity:\n1 = 6 month\n2 = 1 year", "2");
+  if (choice === null) return;
+  const newValidity = choice.trim() === "1" ? "6 month" : choice.trim() === "2" ? "1 year" : choice.trim().toLowerCase();
+  if (!["6 month","1 year"].includes(newValidity)) return alert("Enter 1, 2, 6 month or 1 year.");
+  const remarks = prompt("Remarks (optional):", "");
+  if (remarks === null) return;
+  const result = await apiPost("update", {rowNumber, newValidity, remarks});
+  alert(result.message || "Saved.");
+  if (result.success) await loadVehicles();
+}
+
+async function verifyRecordsPassword() {
+  const password = prompt("Enter Records password:");
+  if (password === null) return false;
+  try {
+    const result = await apiPost("verifySheetPassword", {password});
+    if (!result.success) alert(result.message || "Incorrect password.");
+    return !!result.success;
+  } catch(e) { alert(e.message); return false; }
+}
+
+function updateAddVehicleExpiryPreview() {
+  const validity = $("newValidity").value;
+  const d = new Date();
+
+  if (validity === "6 month") d.setMonth(d.getMonth() + 6);
+  else d.setFullYear(d.getFullYear() + 1);
+
+  const text = String(d.getDate()).padStart(2,"0") + "-" +
+    String(d.getMonth()+1).padStart(2,"0") + "-" +
+    d.getFullYear();
+
+  if ($("newVehicleExpiryPreview")) {
+    $("newVehicleExpiryPreview").textContent = "Estimated expiry: " + text;
+  }
+}
+
+async function saveNewVehicle() {
+  const vehicleNumber = $("newVehicleNumber").value.trim().toUpperCase();
+  const mobileNumber = $("newMobile").value.trim();
+  const vehicleName = $("newVehicleName").value.trim();
+  const fuelType = $("newFuel").value;
+  const validity = $("newValidity").value;
+  const remarks = $("newRemarks").value.trim();
+
+  if (!/^[A-Z0-9]+$/.test(vehicleNumber)) return alert("Vehicle number must contain only capital letters and numbers.");
+  if (!/^\d{10}$/.test(mobileNumber)) return alert("Mobile number must be exactly 10 digits.");
+  if (!vehicleName) return alert("Vehicle name is required.");
+
+  try {
+    const result = await apiPost("addVehicle", {vehicleNumber,mobileNumber,vehicleName,fuelType,validity,remarks});
+    if (!result.success) throw new Error(result.message || "Could not add vehicle.");
+    $("addVehicleModal").classList.remove("show");
+    ["newVehicleNumber","newMobile","newVehicleName","newRemarks"].forEach(id => $(id).value = "");
+    alert(result.message || "Vehicle added.");
+    await loadVehicles();
+  } catch(e) { alert(e.message); }
+}
+
+let passwordChangeType = "login";
+
+function changePasswordFlow(type) {
+  passwordChangeType = type;
+  $("passwordModal").classList.remove("show");
+  $("currentChangePassword").value = "";
+  $("newChangePassword").value = "";
+  $("confirmChangePassword").value = "";
+  $("passwordChangeMessage").textContent = "";
+
+  if (type === "login") {
+    $("passwordChangeTitle").textContent = "🔑 Change Login Password";
+    $("passwordChangeHelp").textContent = "Enter your existing login password and choose a new password.";
+  } else {
+    $("passwordChangeTitle").textContent = "🔒 Change Records Password";
+    $("passwordChangeHelp").textContent = "Enter your existing Records password and choose a new password.";
+  }
+
+  $("passwordChangeModal").classList.add("show");
+  setTimeout(() => $("currentChangePassword").focus(), 50);
+}
+
+async function savePasswordChange() {
+  const currentPassword = $("currentChangePassword").value;
+  const newPassword = $("newChangePassword").value;
+  const confirmPassword = $("confirmChangePassword").value;
+  const msg = $("passwordChangeMessage");
+
+  msg.textContent = "";
+
+  if (!currentPassword) {
+    msg.textContent = "Enter the existing password.";
+    return;
+  }
+  if (newPassword.length < 8) {
+    msg.textContent = "New password must be at least 8 characters.";
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    msg.textContent = "New passwords do not match.";
+    return;
+  }
+
+  const action = passwordChangeType === "login" ? "changePassword" : "changeRecordsPassword";
+  $("savePasswordChange").disabled = true;
+  $("savePasswordChange").textContent = "Saving...";
+
+  try {
+    const result = await apiPost(action, { currentPassword, newPassword });
+    if (!result.success) throw new Error(result.message || "Password change failed.");
+
+    msg.style.color = "#0a8f43";
+    msg.textContent = result.message || "Password changed successfully.";
+
+    setTimeout(() => {
+      $("passwordChangeModal").classList.remove("show");
+      msg.style.color = "#dc2626";
+      if (passwordChangeType === "login") logout();
+    }, 800);
+  } catch (e) {
+    msg.style.color = "#dc2626";
+    msg.textContent = e.message;
+  } finally {
+    $("savePasswordChange").disabled = false;
+    $("savePasswordChange").textContent = "Change Password";
+  }
+}
+
+function getVehiclesForFilter(filterName) {
+  return vehicleData.filter(v => {
+    const status = String(v.status || "Pending").trim();
+    const lower = status.toLowerCase();
+    const days = daysLeftForVehicle(v);
+
+    if (filterName === "urgent") {
+      return lower !== "closed" && days !== null && days >= 0 && days <= 3;
+    }
+    if (filterName === "expired") {
+      return lower !== "closed" && days !== null && days < 0;
+    }
+    if (filterName === "callDone") {
+      return status === "Call Done";
+    }
+    if (filterName === "cantConnect") {
+      return status === "Can't Connect";
+    }
+    if (filterName === "closed") {
+      return lower === "closed";
+    }
+    if (filterName === "expired5") {
+      return lower !== "closed" && days !== null && days < 0 && days >= -5;
+    }
+    if (filterName === "expiredOlder") {
+      return lower !== "closed" && days !== null && days < -5;
+    }
+    return [];
+  });
+}
+
+function openMiniVehicleScreen(filterName) {
+  const titles = {
+    urgent: "🚨 Urgent Vehicles",
+    expired: "⛔ Expired Vehicles",
+    callDone: "✅ Call Done Vehicles",
+    cantConnect: "📵 Can't Connect Vehicles",
+    closed: "🔒 Closed Vehicles",
+    expired5: "🕔 Expired 1–5 Days Ago",
+    expiredOlder: "📋 Expired More Than 5 Days Ago"
+  };
+
+  let list = getVehiclesForFilter(filterName);
+
+  list.sort((a, b) => {
+    const da = daysLeftForVehicle(a);
+    const db = daysLeftForVehicle(b);
+
+    if (filterName === "callDone" || filterName === "cantConnect" || filterName === "closed") {
+      const ta = parseDate(a.timestamp) || new Date(0);
+      const tb = parseDate(b.timestamp) || new Date(0);
+      return tb - ta;
     }
 
-    const remarks = prompt("Update remarks (optional):");
-    if (remarks === null) return;
+    return (db ?? -999999) - (da ?? -999999);
+  });
 
-    // Calculate today's new expiry date.
-    // This is sent too, but the Google Apps Script stores
-    // the validity period in the "valid upto" column.
-    const today = new Date();
+  $("miniVehicleTitle").textContent = titles[filterName] || "Vehicle Details";
+  $("miniVehicleSummary").textContent = list.length + (list.length === 1 ? " vehicle" : " vehicles");
 
-    const expiry = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-    );
+  const body = $("miniVehicleBody");
 
-    if (newValidity === "6 month") {
-        expiry.setMonth(expiry.getMonth() + 6);
-    } else {
-        expiry.setFullYear(expiry.getFullYear() + 1);
-    }
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px">No vehicle details found.</td></tr>';
+  } else {
+    body.innerHTML = list.map(v => {
+      const days = daysLeftForVehicle(v);
+      const dayText = days === null ? "—" :
+        days < 0 ? Math.abs(days) + " days ago" :
+        days === 0 ? "Today" :
+        days + " days";
 
-    const expiryDate =
-        expiry.getFullYear() + "-" +
-        String(expiry.getMonth() + 1).padStart(2, "0") + "-" +
-        String(expiry.getDate()).padStart(2, "0");
+      return `<tr>
+        <td><strong>${escapeHtml(v.vehicleNumber)}</strong></td>
+        <td>${escapeHtml(v.mobileNumber)}</td>
+        <td>${escapeHtml(v.vehicleName)}</td>
+        <td>${escapeHtml(formatExpiryForVehicle(v))}</td>
+        <td>${dayText}</td>
+        <td>${escapeHtml(v.status || "Pending")}</td>
+      </tr>`;
+    }).join("");
+  }
 
-    await sendAction("update", {
-        rowNumber: rowNumber,
-        newValidity: newValidity,
-        newValidityDate: expiryDate,
-        remarks: remarks
-    });
+  $("miniVehicleModal").classList.add("show");
 }
 
-async function sendAction(action, data) {
-    try {
-
-        showMessage("Saving...");
-
-        const params = new URLSearchParams();
-
-        params.append("action", action);
-
-        Object.keys(data).forEach(function (key) {
-            params.append(
-                key,
-                data[key] == null ? "" : data[key]
-            );
-        });
-
-        const response = await fetch(API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type":
-                    "application/x-www-form-urlencoded;charset=UTF-8"
-            },
-            body: params.toString()
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-            throw new Error(
-                result.message || "Save failed."
-            );
-        }
-
-        showMessage(result.message || "Saved successfully.");
-
-        await loadVehicles();
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert(
-            "Could not save to Google Sheets.\n\n" +
-            error.message
-        );
-    }
+function setStatusFilter(filterName, button) {
+  openMiniVehicleScreen(filterName);
 }
 
-function updateDashboard(data) {
-    let due = 0;
-    let callDone = 0;
-    let cantConnect = 0;
-
-    data.forEach(function (vehicle) {
-
-        const status = String(
-            getVehicleValue(vehicle, ["status", "Status"]) ||
-            "Pending"
-        );
-
-        if (status === "Call Done") callDone++;
-        if (status === "Can't Connect") cantConnect++;
-
-        const timestamp = getVehicleValue(vehicle, [
-            "timestamp",
-            "Timestamp"
-        ]);
-
-        const validity = getVehicleValue(vehicle, [
-            "validUpto",
-            "valid upto"
-        ]);
-
-        const expiry = calculateExpiry(timestamp, validity);
-        const days = getDaysLeft(expiry);
-
-        if (
-            status !== "Closed" &&
-            status !== "Call Done" &&
-            status !== "Updated" &&
-            days !== null &&
-            days >= 0 &&
-            days <= 10
-        ) {
-            due++;
-        }
-    });
-
-    setText("totalVehicles", data.length);
-    setText("dueVehicles", due);
-    setText("callDone", callDone);
-    setText("cantConnect", cantConnect);
+function syncTopSearch() {
+  if ($("topSearchInput")) $("topSearchInput").value = $("searchInput").value;
 }
 
-function setText(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.textContent = value;
-}
+function bindUI() {
+  $("loginBtn").onclick = login;
+  $("loginPass").onkeydown = e => { if (e.key === "Enter") login(); };
+  $("topLogoutBtn").onclick = logout;
+  $("refreshData").onclick = loadVehicles;
+  if ($("topSearchInput")) {
+    $("topSearchInput").oninput = () => {
+      $("searchInput").value = $("topSearchInput").value;
+      currentPage = 1;
+      renderVehicles();
+    };
+  }
+  if ($("expiryFilter")) $("expiryFilter").onchange = () => { currentPage = 1; renderVehicles(); };
+  if ($("recordFilter")) $("recordFilter").onchange = () => { currentPage = 1; renderVehicles(); };
+  if ($("clearFilters")) $("clearFilters").onclick = () => {
+    $("searchInput").value = "";
+    if ($("topSearchInput")) $("topSearchInput").value = "";
+    $("expiryFilter").value = "all";
+    $("recordFilter").value = "all";
+    currentPage = 1;
+    renderVehicles();
+  };
+  $("searchInput").oninput = () => { currentPage = 1; syncTopSearch(); renderVehicles(); };
 
-function showMessage(message) {
-    const element = document.getElementById("message");
-    if (!element) return;
+  $("upcomingView").onclick = () => {
+    currentView = "upcoming";
+    currentPage = 1;
+    currentFilter = "";
+    document.querySelectorAll(".status-filter").forEach(el => el.classList.remove("active-filter"));
+    $("upcomingView").classList.add("active");
+    $("vehicleRecordsView").classList.remove("active");
+    $("pdfButton").style.display = "none";
+    renderVehicles();
+  };
 
-    element.textContent = message;
+  $("vehicleRecordsView").onclick = async () => {
+    if (!(await verifyRecordsPassword())) return;
+    currentView = "records";
+    currentPage = 1;
+    currentFilter = "";
+    document.querySelectorAll(".status-filter").forEach(el => el.classList.remove("active-filter"));
+    $("vehicleRecordsView").classList.add("active");
+    $("upcomingView").classList.remove("active");
+    $("pdfButton").style.display = "inline-block";
+    renderVehicles();
+  };
 
-    clearTimeout(window.__messageTimer);
+  $("pdfButton").onclick = () => window.print();
+  $("addVehicleBtn").onclick = () => { $("addVehicleModal").classList.add("show"); updateAddVehicleExpiryPreview(); };
+  $("cancelAdd").onclick = () => $("addVehicleModal").classList.remove("show");
+  $("closeAddVehicle").onclick = () => $("addVehicleModal").classList.remove("show");
+  $("newValidity").onchange = updateAddVehicleExpiryPreview;
+  $("saveAdd").onclick = saveNewVehicle;
 
-    window.__messageTimer = setTimeout(function () {
-        element.textContent = "";
-    }, 2500);
+
+  $("topChangePasswordBtn").onclick = () => $("passwordModal").classList.add("show");
+  if ($("settingsBtn")) $("settingsBtn").onclick = () => $("passwordModal").classList.add("show");
+  $("cancelPassword").onclick = () => $("passwordModal").classList.remove("show");
+  $("changeLoginPasswordBtn").onclick = () => changePasswordFlow("login");
+  $("changeRecordsPasswordBtn").onclick = () => changePasswordFlow("records");
+  $("cancelPasswordChange").onclick = () => $("passwordChangeModal").classList.remove("show");
+  $("savePasswordChange").onclick = savePasswordChange;
+  $("passwordChangeModal").onclick = e => {
+    if (e.target === $("passwordChangeModal")) $("passwordChangeModal").classList.remove("show");
+  };
+
+  document.querySelectorAll(".status-filter").forEach(button => {
+    button.onclick = () => setStatusFilter(button.dataset.filter, button);
+  });
+
+  $("closeMiniVehicle").onclick = () => $("miniVehicleModal").classList.remove("show");
+  $("miniVehicleModal").onclick = e => {
+    if (e.target === $("miniVehicleModal")) $("miniVehicleModal").classList.remove("show");
+  };
+
+  $("sheetLink").onclick = async e => {
+    e.preventDefault();
+    if (await verifyRecordsPassword()) window.open(SHEET_URL, "_blank", "noopener");
+  };
 }
 
 function escapeHtml(value) {
-    if (value === null || value === undefined) return "";
-
-    return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+  return String(value ?? "").replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[m]));
 }
 
-window.markCallDone = markCallDone;
-window.markCantConnect = markCantConnect;
-window.updateVehicle = updateVehicle;
-window.closeVehicle = closeVehicle;
-window.refreshVehicles = loadVehicles;
-
-
-// ===== Add New Vehicle / UI actions =====
-document.addEventListener('DOMContentLoaded',function(){
- const b=document.getElementById('addVehicleBtn'),m=document.getElementById('addVehicleModal'),c=document.getElementById('cancelAdd'),s=document.getElementById('saveAdd');
- if(b)b.onclick=()=>m&&m.classList.add('show'); if(c)c.onclick=()=>m&&m.classList.remove('show');
- if(s)s.onclick=saveNewVehicle;
- const cp=document.getElementById('changePasswordBtn'); if(cp)cp.onclick=()=>alert('For stronger security, change the server-side password in your Google Apps Script. The current login password is ASDF@321.');
-});
-async function saveNewVehicle(){
- const vn=(document.getElementById('newVehicleNumber').value||'').trim().toUpperCase();
- const mob=(document.getElementById('newMobile').value||'').trim();
- const name=(document.getElementById('newVehicleName').value||'').trim();
- const fuel=document.getElementById('newFuel').value; const validity=document.getElementById('newValidity').value;
- if(!/^[A-Z0-9]+$/.test(vn)){alert('Vehicle number: capital letters and numbers only.');return}
- if(!/^\d{10}$/.test(mob)){alert('Mobile number must be exactly 10 digits.');return}
- if(!name){alert('Enter vehicle name.');return}
- try{
-   const p=new URLSearchParams({action:'add',vehicleNumber:vn,mobileNumber:mob,vehicleName:name,fuelType:fuel,validUpto:validity,status:'Pending',remarks:''});
-   const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body:p.toString()});
-   const x=await r.json(); if(!x.success)throw new Error(x.message||'Could not add vehicle');
-   document.getElementById('addVehicleModal').classList.remove('show'); alert('New vehicle added successfully.'); if(typeof loadVehicles==='function')loadVehicles();
- }catch(e){alert('Could not add vehicle.\n\n'+e.message)}
-}
-window.saveNewVehicle=saveNewVehicle;
+window.markStatus = markStatus;
+window.renewVehicle = renewVehicle;

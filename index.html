@@ -3,163 +3,514 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0877c9">
-<title>SMOGCERT SOLUTIONS | Smart Reminder Dashboard</title>
+<meta name="theme-color" content="#0b2e59">
+<title>SMOGCERT SOLUTIONS | Vehicle Dashboard</title>
 <link rel="manifest" href="manifest.json">
 <style>
+:root{
+  --navy:#06284d;--navy2:#0b376b;--blue:#0877e8;--blue2:#1267d6;
+  --bg:#f5f8fc;--card:#fff;--border:#dfe7f1;--text:#102744;--muted:#63748a;
+  --green:#0aa64f;--red:#e02b32;--orange:#f28b15;--slate:#617086;
+}
 *{box-sizing:border-box}
-body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,#edf9ff,#f4f7fb);color:#102b4d}
-.top-header{background:linear-gradient(100deg,#092c55,#0877c9);color:#fff;padding:20px 4%;display:flex;justify-content:space-between;align-items:center;min-height:94px;box-shadow:0 5px 20px #153c5c30}
-.brand-wrap{display:flex;align-items:center;gap:14px}.brand-logo{width:54px;height:54px;border-radius:17px;background:linear-gradient(135deg,#14b9e8,#0877c9);display:grid;place-items:center;font-weight:900;font-size:20px}.brand-name{font-size:32px;letter-spacing:.5px}.brand-name span{font-weight:400}.brand-tagline{font-size:13px;margin-top:4px;color:#d9edff}
-.top-tools{display:flex;align-items:center}.quick-links{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-.quick-link{color:#fff;text-decoration:none;text-align:center;min-width:76px;padding:7px 8px;border:1px solid #ffffff40;border-radius:14px;background:#ffffff12;backdrop-filter:blur(5px);transition:.2s}
-.sheet-link{background:linear-gradient(135deg,#16a34a,#0877c9);border-color:#ffffff80;min-width:110px}.sheet-link .quick-icon{font-size:30px}.sheet-link:hover{background:#fff;color:#0877c9}.quick-link:hover{background:#fff;color:#075da0;transform:translateY(-2px)}
-.quick-icon{display:block;font-size:25px;margin-bottom:2px}.quick-link span:last-child{font-size:11px;font-weight:700}
-.container{max-width:1280px;margin:0 auto;padding:34px 22px 55px}.section-kicker{font-size:12px;letter-spacing:2px;font-weight:900;color:#0877c9}.page-title{margin:5px 0 16px;font-size:25px}
-.dashboard{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:10px}.dashboard-small{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px;max-width:620px}
-.dashboard-card{background:#fff;border-radius:14px;padding:20px;min-height:112px;text-align:center;box-shadow:0 5px 18px #143c5a18;border-left:5px solid #1680d0}.dashboard-card.due{border-left-color:#f59e0b}.dashboard-card.urgent{border-left-color:#ef4444}.dashboard-card.expired{border-left-color:#991b1b}.dashboard-card.done{border-left-color:#16a34a}.dashboard-card.cant{border-left-color:#dc2626}
-.dashboard-number{font-size:34px;font-weight:900;color:#1769aa}.dashboard-label{font-size:15px;margin-top:5px;font-weight:600}
-.controls{background:#fff;border-radius:15px;padding:16px;box-shadow:0 5px 18px #143c5a14;margin-bottom:20px}.search-box{width:100%;padding:14px 15px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px;outline:none}.search-box:focus{border-color:#0877c9;box-shadow:0 0 0 3px #0877c91a}
-.toolbar,.records-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:13px}.btn{border:0;border-radius:9px;padding:11px 15px;font-weight:800;cursor:pointer}.refresh-btn{background:#147bd1;color:#fff}.records-btn{background:#e8f2fb;color:#075b99}.records-btn.active{background:#0877c9;color:#fff}.pdf-btn{background:#dc2626;color:#fff}
-.table-card{background:#fff;border-radius:15px;overflow:hidden;box-shadow:0 5px 18px #143c5a18}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:1050px}th{background:#0877c9;color:#fff;padding:13px 10px;text-align:left;font-size:13px}td{padding:12px 10px;border-bottom:1px solid #e5eaf0;font-size:13px}tr:hover td{background:#f7fbff}
-.record-expiry{display:inline-block;padding:5px 9px;border-radius:20px;font-weight:800;font-size:11px}.expiry-valid{background:#dcfce7;color:#166534}.expiry-due{background:#fef3c7;color:#92400e}.expiry-urgent{background:#fee2e2;color:#b91c1c}.expiry-expired{background:#7f1d1d;color:#fff}
-.days-valid{color:#15803d;font-weight:900}.days-due{color:#d97706;font-weight:900}.days-urgent{color:#dc2626;font-weight:900}.days-expired{color:#991b1b;font-weight:900}
-.action-buttons{display:flex;gap:5px;flex-wrap:wrap}.action-buttons button{border:0;border-radius:7px;padding:7px 9px;color:#fff;font-size:11px;font-weight:800;cursor:pointer}.callDone{background:#16a34a}.cantConnect{background:#dc2626}.renew{background:#0877c9}.closeCase{background:#64748b}
-.pdf-title{display:none}
-@media(max-width:900px){.top-header{align-items:flex-start;gap:12px}.quick-links{display:none}.dashboard{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.brand-name{font-size:23px}.dashboard{grid-template-columns:1fr}.dashboard-small{grid-template-columns:1fr}.container{padding:22px 12px}}
-@media print{body{background:#fff}.top-header,.controls,.dashboard,.dashboard-small,.no-print{display:none!important}.container{padding:0}.pdf-title{display:block;text-align:center}.table-card{box-shadow:none}.table-wrap{overflow:visible}table{min-width:0;font-size:9px}th,td{padding:5px}}
-</style>
+body{margin:0;font-family:Inter,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}
+body.locked #app{display:none}
 
-<style id="smogcert-login-style">
-#smogcertLogin{
-  position:fixed;inset:0;z-index:99999;
+/* Login */
+#loginGate{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#06284d,#0877c9);padding:20px}
+.login-box{width:min(410px,100%);background:#fff;border-radius:22px;padding:32px;box-shadow:0 25px 70px #0005;text-align:center}
+.login-logo{width:70px;height:70px;margin:0 auto 14px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(135deg,#14b9e8,#0877c9);color:#fff;font-weight:900;font-size:24px}
+.login-box h1{margin:0;color:#092c55;font-size:26px}.login-box p{color:#64748b;margin:8px 0 22px}
+.login-box input{width:100%;padding:14px;margin:0 0 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px}
+#loginBtn{width:100%;padding:14px;border:0;border-radius:10px;background:#0877c9;color:#fff;font-weight:800;font-size:16px;cursor:pointer}
+#loginError{min-height:22px;color:#dc2626;font-weight:700;margin:8px 0}
+.login-loader{display:none;align-items:center;justify-content:center;gap:7px;height:30px;margin-top:8px}.login-loader.show{display:flex}
+.login-loader span{width:9px;height:9px;border-radius:50%;background:#0877c9;animation:bounce 1.05s infinite ease-in-out}.login-loader span:nth-child(2){animation-delay:.12s}.login-loader span:nth-child(3){animation-delay:.24s}.login-loader span:nth-child(4){animation-delay:.36s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-9px);opacity:1}}
+
+/* Main shell */
+.app-shell{min-height:100vh;display:grid;grid-template-columns:238px minmax(0,1fr)}
+.sidebar{position:fixed;inset:0 auto 0 0;width:238px;background:linear-gradient(180deg,#061f3d,#073b70);color:#fff;padding:24px 16px;display:flex;flex-direction:column;z-index:50;box-shadow:4px 0 18px #06284d18}
+.side-brand{text-align:center;padding-bottom:24px}.side-logo{width:62px;height:62px;margin:auto;border-radius:18px;display:grid;place-items:center;background:linear-gradient(145deg,#20bdf0,#0678dc);font-size:25px;font-weight:900;box-shadow:0 8px 22px #0003}
+.side-name{font-weight:900;font-size:19px;margin-top:12px}.side-name span{font-weight:400}.side-tag{font-size:12px;line-height:1.55;color:#d6e8fa;margin-top:7px}
+.side-nav{display:flex;flex-direction:column;gap:5px}.side-link{width:100%;border:0;background:transparent;color:#fff;text-decoration:none;border-radius:9px;padding:12px 14px;display:flex;align-items:center;gap:13px;text-align:left;cursor:pointer;font-weight:650;font-size:15px}
+.side-link:hover{background:#ffffff12}.side-link.active{background:linear-gradient(90deg,#167ff0,#0877e8);box-shadow:0 6px 18px #0002}.side-icon{width:24px;text-align:center;font-size:19px}
+.side-bottom{margin-top:auto;border-top:1px solid #ffffff28;padding-top:12px}
+
+.content{grid-column:2;min-width:0}
+.topbar{height:82px;background:#fff;border-bottom:1px solid var(--border);display:grid;grid-template-columns:290px minmax(280px,670px) 1fr;align-items:center;gap:20px;padding:0 32px;position:sticky;top:0;z-index:30}
+.top-title{font-size:25px;font-weight:900;white-space:nowrap}.top-search{position:relative}.top-search span{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:#718198}
+.top-search input{width:100%;height:46px;padding:0 15px 0 43px;border:1px solid #d5deea;border-radius:9px;outline:none}.top-search input:focus{border-color:#0877e8;box-shadow:0 0 0 3px #0877e815}
+.admin-area{justify-self:end;display:flex;align-items:center;gap:11px;font-weight:700}.admin-avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#0c274a;color:#fff;font-weight:900}.bell{font-size:22px}
+
+.workspace{padding:24px 26px 42px}
+.add-row{display:flex;justify-content:flex-end;margin-bottom:20px}.add-vehicle-main{border:0;border-radius:9px;padding:14px 24px;background:linear-gradient(90deg,#04a88d,#0877e8);color:#fff;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 7px 18px #0877e828}.add-vehicle-main span{font-size:24px;margin-right:8px;vertical-align:-2px}
+
+.metric-grid{display:grid;grid-template-columns:repeat(6,minmax(145px,1fr));gap:16px;margin-bottom:26px}
+.metric-card{border:1px solid var(--border);background:#fff;border-radius:11px;min-height:132px;padding:20px 15px;display:flex;align-items:center;gap:12px;cursor:pointer;box-shadow:0 4px 13px #1027440b;transition:.2s}
+.metric-card:hover{transform:translateY(-2px);box-shadow:0 9px 20px #10274416}.metric-icon{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;font-size:29px;flex:0 0 62px;border:1px solid}.metric-number{font-size:31px;font-weight:900;line-height:1}.metric-label{font-size:12px;font-weight:800;margin-top:7px;color:#263d59}
+.metric-total .metric-icon{background:#effbf4;color:var(--green);border-color:#bfe9cf}.metric-total .metric-number{color:var(--green)}
+.metric-done .metric-icon{background:#effbf4;color:var(--green);border-color:#bfe9cf}.metric-done .metric-number{color:var(--green)}
+.metric-cant .metric-icon{background:#fff3f3;color:var(--red);border-color:#ffc8cb}.metric-cant .metric-number{color:#c92638}
+.metric-closed .metric-icon{background:#f2f7ff;color:#1267d6;border-color:#c9dcfb}.metric-closed .metric-number{color:#1267d6}
+.metric-urgent .metric-icon{background:#fff7ef;color:var(--orange);border-color:#ffd6ae}.metric-urgent .metric-number{color:#e97700}
+.metric-expired .metric-icon{background:#fff2f2;color:var(--red);border-color:#ffc5c7}.metric-expired .metric-number{color:#c81731}
+
+.filter-panel{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 4px 14px #1027440b;margin-bottom:22px}
+.filter-row{display:grid;grid-template-columns:minmax(300px,1fr) 220px 220px 170px;gap:22px;align-items:end}
+.field-search{position:relative}.field-search span{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#6f8198}.field-search input{width:100%;height:54px;padding:0 16px 0 48px;border:1px solid #d5deea;border-radius:9px}
+.select-field{position:relative}.select-field label{display:block;font-size:12px;color:#60738b;margin-bottom:5px}.select-field select{width:100%;height:54px;border:1px solid #d5deea;border-radius:9px;padding:0 13px;background:#fff;color:#102744}
+.clear-btn{height:54px;border:1px solid #d5deea;background:#fff;border-radius:9px;font-weight:800;color:#233b5a;cursor:pointer}.filter-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.view-btn{height:42px;border:1px solid #d4dfec;background:#fff;color:#0877e8;border-radius:7px;padding:0 16px;font-weight:850;cursor:pointer}.view-btn.active{background:#0877e8;color:#fff;border-color:#0877e8}.refresh-btn{height:42px;border:1px solid #d4dfec;background:#fff;color:#233b5a;border-radius:7px;padding:0 16px;font-weight:850;cursor:pointer}.pdf-btn{height:42px;border:0;background:#dc2626;color:#fff;border-radius:7px;padding:0 16px;font-weight:850;cursor:pointer}
+
+.table-card{background:#fff;border:1px solid var(--border);border-radius:11px;overflow:hidden;box-shadow:0 4px 14px #1027440b}.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-gradient(90deg,#096bd6,#0877e8);color:#fff;text-align:left;font-size:12px;padding:14px 13px}td{padding:13px;border-bottom:1px solid #e7edf4;font-size:12px;color:#263c59}tbody tr:hover{background:#f8fbff}
+.record-expiry{display:inline-block;border-radius:17px;padding:5px 10px;font-weight:850;font-size:11px}.expiry-valid{background:#e7f8ed;color:#07873c}.expiry-due{background:#fff2de;color:#b45e00}.expiry-urgent{background:#fff0e8;color:#c84c00}.expiry-expired{background:#e92329;color:#fff}
+.days-valid{color:#128640;font-weight:900}.days-due{color:#cc7600;font-weight:900}.days-urgent,.days-expired{color:#dc1f28;font-weight:900}
+.action-buttons{display:flex;gap:8px;flex-wrap:nowrap}.action-buttons button{border:0;border-radius:5px;padding:7px 10px;color:#fff;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap}.callDone{background:#0aa64f}.cantConnect{background:#e02b32}.renew{background:#0877e8}.closeCase{background:#66758b}
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:14px 15px;color:#4e627b;font-size:12px}.pagination{display:flex;gap:7px;align-items:center}.page-btn{min-width:39px;height:39px;padding:0 10px;border:1px solid #dbe4ef;background:#fff;color:#213953;border-radius:6px;cursor:pointer}.page-btn.active{background:#0877e8;color:#fff;border-color:#0877e8}.page-btn:disabled{opacity:.45;cursor:not-allowed}.page-ellipsis{padding:0 4px}
+
+/* Modals */
+.modal{position:fixed;inset:0;background:#071b33aa;z-index:99999;display:none;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}
+.modal-box{width:min(520px,100%);background:#fff;border-radius:16px;padding:24px;box-shadow:0 25px 70px #0005}.modal-box h2{margin-top:0}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-grid label{font-size:12px;font-weight:800}.form-grid input,.form-grid select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:9px;margin-top:4px}.form-actions{display:flex;gap:10px;margin-top:16px}.form-actions button{flex:1;padding:12px;border:0;border-radius:9px;font-weight:800;cursor:pointer}.save-new{background:#0aa64f;color:#fff}.cancel-new{background:#e8edf3}.security-btn{background:#263d59;color:#fff}
+.mini-list-box{width:min(920px,96vw);max-height:84vh;display:flex;flex-direction:column}.mini-list-head{display:flex;align-items:center;justify-content:space-between}.mini-close{border:0;background:#dc2626;color:#fff;width:38px;height:38px;border-radius:8px;font-weight:900}.mini-summary{margin:10px 0;padding:10px;background:#f5f9fd;border-radius:8px;font-weight:800;color:#075b99}.mini-list-wrap{overflow:auto;border:1px solid #e5eaf0;border-radius:9px}.mini-table{min-width:760px}.mini-table th,.mini-table td{font-size:12px;padding:9px}
+
+@media(max-width:1180px){.metric-grid{grid-template-columns:repeat(3,1fr)}.filter-row{grid-template-columns:1fr 1fr}.topbar{grid-template-columns:230px 1fr auto}}
+@media(max-width:800px){.app-shell{display:block}.sidebar{position:static;width:100%;height:auto}.side-nav{display:grid;grid-template-columns:repeat(2,1fr)}.side-bottom{margin-top:12px}.content{grid-column:auto}.topbar{position:static;grid-template-columns:1fr;padding:15px;height:auto}.admin-area{justify-self:start}.workspace{padding:18px 12px}.metric-grid{grid-template-columns:repeat(2,1fr)}.filter-row{grid-template-columns:1fr}.add-row{justify-content:stretch}.add-vehicle-main{width:100%}}
+@media(max-width:520px){.metric-grid{grid-template-columns:1fr}.side-nav{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}}
+@media print{.sidebar,.topbar,.add-row,.filter-panel,.table-footer{display:none!important}.content{grid-column:1}.workspace{padding:0}.table-card{box-shadow:none}.table-wrap{overflow:visible}table{min-width:0;font-size:9px}}
+
+/* V12: compact centered popup screens */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(7,27,51,.62);
+  z-index:99999;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  backdrop-filter:blur(3px);
+}
+.modal.show{display:flex}
+.modal-box{
+  width:min(440px,94vw);
+  max-height:82vh;
+  overflow:auto;
+  margin:auto;
+  background:#fff;
+  border-radius:18px;
+  padding:22px;
+  box-shadow:0 28px 80px rgba(0,0,0,.30);
+  border:1px solid #e1e9f2;
+}
+.modal-box h2{
+  margin:0 0 14px;
+  text-align:center;
+  color:#102744;
+  font-size:21px;
+}
+.modal-box > p{
+  text-align:center;
+  color:#63748a;
+  font-size:13px;
+  margin:0 0 16px;
+}
+.form-grid{
+  grid-template-columns:1fr;
+  gap:10px;
+}
+.form-grid input,.form-grid select{
+  padding:10px 11px;
+}
+.form-actions{
+  margin-top:14px;
+}
+.mini-list-box{
+  width:min(760px,94vw);
+  max-height:78vh;
+  padding:20px;
+}
+.mini-list-head{
+  position:relative;
+  justify-content:center;
+  min-height:38px;
+}
+.mini-list-head h2{
+  text-align:center;
+  padding:0 44px;
+  margin:0;
+}
+.mini-close{
+  position:absolute;
+  right:0;
+  top:0;
+}
+.mini-summary{
+  text-align:center;
+  margin:10px auto 12px;
+  width:fit-content;
+  min-width:130px;
+}
+@media(max-width:520px){
+  .modal-box{width:94vw;padding:18px}
+  .mini-list-box{width:96vw}
+}
+
+
+/* V13 attractive Add Vehicle popup */
+.vehicle-add-box{
+  width:min(610px,95vw);
+  padding:0;
+  overflow:hidden;
+  border-radius:22px;
+}
+.vehicle-add-head{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:22px 24px 18px;
+  background:linear-gradient(135deg,#072b53,#0d77df);
+  color:#fff;
+}
+.vehicle-add-icon{
+  width:54px;height:54px;border-radius:16px;
+  display:grid;place-items:center;
+  background:#ffffff18;
+  border:1px solid #ffffff38;
+  font-size:27px;
+}
+.vehicle-add-head h2{
+  margin:0;
+  color:#fff;
+  text-align:left;
+  font-size:22px;
+}
+.vehicle-add-head p{
+  margin:4px 0 0;
+  color:#dcecff;
+  text-align:left;
+  font-size:12px;
+}
+.vehicle-add-close{
+  position:absolute;right:18px;top:18px;
+  width:36px;height:36px;border:0;border-radius:10px;
+  background:#ffffff16;color:#fff;font-weight:900;cursor:pointer;
+}
+.vehicle-add-progress{
   display:flex;align-items:center;justify-content:center;
-  padding:20px;background:linear-gradient(135deg,#06284d,#0877c9);
+  gap:9px;padding:16px 24px 8px;background:#fff;
 }
-#smogcertLogin .login-box{
-  width:min(420px,100%);background:#fff;border-radius:22px;
-  padding:34px;box-shadow:0 25px 70px rgba(0,0,0,.28);text-align:center;
+.step-pill{
+  display:flex;align-items:center;gap:7px;
+  font-size:12px;font-weight:800;color:#7a899b;
 }
-#smogcertLogin .login-logo{
-  width:72px;height:72px;margin:0 auto 14px;border-radius:22px;
-  display:grid;place-items:center;color:#fff;font-weight:900;font-size:25px;
-  background:linear-gradient(135deg,#14b9e8,#0877c9);
+.step-pill span{
+  width:24px;height:24px;border-radius:50%;
+  display:grid;place-items:center;background:#eaf0f6;color:#63748a;
 }
-#smogcertLogin h1{margin:0;color:#092c55;font-size:27px}
-#smogcertLogin p{color:#64748b;margin:8px 0 24px}
-#smogcertLogin input{
-  width:100%;padding:14px;border:1px solid #cbd5e1;border-radius:10px;
-  margin-bottom:12px;font-size:16px;outline:none;
+.step-pill.active{color:#0877e8}.step-pill.active span{background:#0877e8;color:#fff}
+.step-line{width:56px;height:2px;background:#dfe7f0}
+.vehicle-form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+  padding:18px 24px 10px;
 }
-#smogcertLogin input:focus{border-color:#0877c9;box-shadow:0 0 0 3px #0877c91a}
-#smogcertLogin button{
-  width:100%;padding:14px;border:0;border-radius:10px;
-  background:#0877c9;color:#fff;font-size:16px;font-weight:800;cursor:pointer;
+.vehicle-field{display:block}
+.vehicle-field>span{
+  display:block;
+  margin-bottom:6px;
+  color:#304862;
+  font-size:12px;
+  font-weight:850;
 }
-#smogcertLogin button:hover{background:#075b99}
-#smogcertLogin .login-error{color:#dc2626;font-weight:700;min-height:22px;margin:10px 0}
-body.smogcert-locked{overflow:hidden}
-body.smogcert-locked>header,
-body.smogcert-locked>main,
-body.smogcert-locked>footer{display:none!important}
-#smogcertLogout{
-  position:fixed;right:18px;bottom:18px;z-index:9998;
-  border:0;border-radius:10px;padding:10px 14px;background:#dc2626;
-  color:#fff;font-weight:800;cursor:pointer;box-shadow:0 5px 16px #0002;
+.vehicle-field-full{grid-column:1/-1}
+.field-shell{
+  display:flex;align-items:center;
+  border:1px solid #d7e1ec;
+  border-radius:11px;
+  background:#f9fbfd;
+  transition:.2s;
 }
-</style>
+.field-shell:focus-within{
+  border-color:#0877e8;
+  background:#fff;
+  box-shadow:0 0 0 3px #0877e814;
+}
+.field-icon{
+  width:42px;text-align:center;font-size:17px;
+  border-right:1px solid #e4ebf2;
+  flex:0 0 42px;
+}
+.field-shell input,.field-shell select{
+  width:100%;
+  border:0;
+  background:transparent;
+  padding:12px 12px;
+  outline:none;
+  color:#102744;
+}
+.vehicle-validity-preview{
+  margin:8px 24px 0;
+  padding:12px 14px;
+  display:flex;align-items:center;gap:12px;
+  border-radius:12px;
+  background:linear-gradient(135deg,#eff8ff,#f1fff7);
+  border:1px solid #cfe5f6;
+}
+.preview-icon{
+  width:42px;height:42px;border-radius:12px;
+  display:grid;place-items:center;
+  background:#0877e812;font-size:21px;
+}
+.vehicle-validity-preview strong{display:block;font-size:13px;color:#163b60}
+.vehicle-validity-preview small{display:block;margin-top:3px;color:#6b7b8f;font-size:11px}
+.vehicle-form-actions{
+  display:flex;gap:10px;
+  padding:18px 24px 22px;
+}
+.vehicle-form-actions button{
+  flex:1;
+  height:46px;
+  border-radius:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.vehicle-cancel{
+  border:1px solid #d6e0ea;
+  background:#f4f7fa;color:#40556c;
+}
+.vehicle-save{
+  border:0;
+  background:linear-gradient(90deg,#08a967,#0877e8);
+  color:#fff;
+  box-shadow:0 7px 18px #0877e827;
+}
+.vehicle-save span{font-size:20px;vertical-align:-1px;margin-right:4px}
+@media(max-width:620px){
+  .vehicle-form-grid{grid-template-columns:1fr}
+  .vehicle-field-full{grid-column:auto}
+  .vehicle-form-actions{flex-direction:column}
+}
 
-
-<style id="secure-login-style">
-#loginGate{position:fixed;inset:0;z-index:999999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#06284d,#0877c9);padding:20px}#loginGate .box{width:min(410px,100%);background:#fff;border-radius:22px;padding:32px;box-shadow:0 25px 70px #0005;text-align:center}#loginGate .logo{width:70px;height:70px;margin:auto auto 14px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(135deg,#14b9e8,#0877c9);color:#fff;font-weight:900;font-size:24px}#loginGate h1{margin:0;color:#092c55;font-size:26px}#loginGate p{color:#64748b;margin:8px 0 22px}#loginGate input{width:100%;padding:14px;margin:0 0 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:16px}#loginGate button{width:100%;padding:14px;border:0;border-radius:10px;background:#0877c9;color:#fff;font-weight:800;font-size:16px;cursor:pointer}.login-error{min-height:22px;color:#dc2626;font-weight:700;margin:8px}.locked{overflow:hidden}.locked>header,.locked>main{visibility:hidden}.add-btn{background:#16a34a!important;color:#fff!important}.modal{position:fixed;inset:0;background:#0007;z-index:99990;display:none;align-items:center;justify-content:center;padding:20px}.modal.show{display:flex}.modal-box{width:min(520px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 25px 70px #0005}.modal-box h2{margin-top:0;color:#092c55}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form-grid label{font-size:12px;font-weight:800;color:#334155}.form-grid input,.form-grid select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:9px;margin-top:4px}.form-actions{display:flex;gap:10px;margin-top:16px}.form-actions button{flex:1;padding:12px;border:0;border-radius:9px;font-weight:800;cursor:pointer}.save-new{background:#16a34a;color:#fff}.cancel-new{background:#e2e8f0}.security-btn{background:#334155;color:#fff!important}@media(max-width:600px){.form-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body class="locked">
+
 <div id="loginGate">
- <div class="box"><div class="logo">SC</div><h1>SMOGCERT SOLUTIONS</h1><p>Secure Vehicle Management</p><input id="loginUser" placeholder="Username" autocomplete="username"><input id="loginPass" type="password" placeholder="Password" autocomplete="current-password"><div id="loginError" class="login-error"></div><button id="loginBtn">🔐 Login</button></div>
-</div>
-<div id="addVehicleModal" class="modal"><div class="modal-box"><h2>➕ Add New Vehicle</h2><div class="form-grid"><label>Vehicle Number<input id="newVehicleNumber" maxlength="15" placeholder="KL01AB1234"></label><label>Mobile Number<input id="newMobile" maxlength="10" inputmode="numeric" placeholder="10 digits"></label><label>Vehicle Name<input id="newVehicleName" placeholder="Car / Bike / Auto"></label><label>Fuel Type<select id="newFuel"><option value="petrol">Petrol</option><option value="diesel">Diesel</option><option value="cng">CNG</option><option value="electric">Electric</option><option value="other">Other</option></select></label><label>Validity<select id="newValidity"><option value="6 month">6 month</option><option value="1 year">1 year</option></select></label></div><div class="form-actions"><button class="cancel-new" id="cancelAdd">Cancel</button><button class="save-new" id="saveAdd">Save Vehicle</button></div></div></div>
-
-
-<div id="smogcertLogin">
   <div class="login-box">
     <div class="login-logo">SC</div>
     <h1>SMOGCERT SOLUTIONS</h1>
     <p>Secure Vehicle Management</p>
-    <input id="loginUsername" type="text" placeholder="Username" autocomplete="username">
-    <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
-    <div id="loginError" class="login-error"></div>
-    <button id="loginButton" type="button">🔐 Login</button>
+    <input id="loginUser" type="text" placeholder="Username" autocomplete="username">
+    <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password">
+    <div id="loginError"></div>
+    <button id="loginBtn" type="button">🔐 Login</button>
+    <div id="loginLoader" class="login-loader"><span></span><span></span><span></span><span></span></div>
   </div>
 </div>
-<button id="smogcertLogout" type="button" style="display:none">🔒 Logout</button>
 
-<header class="top-header">
-  <div class="brand-wrap">
-    <div class="brand-logo">SC</div>
-    <div>
-      <div class="brand-name"><strong>SMOGCERT</strong> <span>SOLUTIONS</span></div>
-      <div class="brand-tagline">Pollution Certificate Reminder &amp; Vehicle Management</div>
+<div id="addVehicleModal" class="modal">
+  <div class="modal-box vehicle-add-box">
+    <div class="vehicle-add-head">
+      <div class="vehicle-add-icon">🚘</div>
+      <div>
+        <h2>Add Vehicle Details</h2>
+        <p>Create a new PUCC reminder record</p>
+      </div>
+      <button id="closeAddVehicle" class="vehicle-add-close" type="button">✕</button>
+    </div>
+
+    <div class="vehicle-add-progress">
+      <div class="step-pill active"><span>1</span> Vehicle</div>
+      <div class="step-line"></div>
+      <div class="step-pill"><span>2</span> PUCC</div>
+    </div>
+
+    <div class="vehicle-form-grid">
+      <label class="vehicle-field">
+        <span>Vehicle Number</span>
+        <div class="field-shell"><span class="field-icon">🔖</span><input id="newVehicleNumber" maxlength="15" placeholder="KL01AB1234"></div>
+      </label>
+
+      <label class="vehicle-field">
+        <span>Mobile Number</span>
+        <div class="field-shell"><span class="field-icon">📱</span><input id="newMobile" maxlength="10" inputmode="numeric" placeholder="10 digit mobile number"></div>
+      </label>
+
+      <label class="vehicle-field">
+        <span>Vehicle Name</span>
+        <div class="field-shell"><span class="field-icon">🚗</span><input id="newVehicleName" placeholder="Car / Bike / Auto"></div>
+      </label>
+
+      <label class="vehicle-field">
+        <span>Fuel Type</span>
+        <div class="field-shell"><span class="field-icon">⛽</span><select id="newFuel"><option value="petrol">Petrol</option><option value="diesel">Diesel</option><option value="cng">CNG</option><option value="electric">Electric</option><option value="other">Other</option></select></div>
+      </label>
+
+      <label class="vehicle-field">
+        <span>PUCC Validity</span>
+        <div class="field-shell"><span class="field-icon">📅</span><select id="newValidity"><option value="6 month">6 Months</option><option value="1 year">1 Year</option></select></div>
+      </label>
+
+      <label class="vehicle-field vehicle-field-full">
+        <span>Remarks</span>
+        <div class="field-shell textarea-shell"><span class="field-icon">📝</span><input id="newRemarks" placeholder="Optional remarks"></div>
+      </label>
+    </div>
+
+    <div class="vehicle-validity-preview">
+      <div class="preview-icon">🛡️</div>
+      <div>
+        <strong>PUCC Expiry Preview</strong>
+        <small id="newVehicleExpiryPreview">Expiry date will be calculated automatically</small>
+      </div>
+    </div>
+
+    <div class="vehicle-form-actions">
+      <button class="vehicle-cancel" id="cancelAdd" type="button">Cancel</button>
+      <button class="vehicle-save" id="saveAdd" type="button"><span>＋</span> Save Vehicle</button>
     </div>
   </div>
-  <nav class="quick-links" aria-label="Useful vehicle service links">
-    <a class="quick-link" href="https://puc.parivahan.gov.in/puc/" target="_blank" rel="noopener"><span class="quick-icon">🚘</span><span>PUCC</span></a>
-    <a class="quick-link" href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/statevalidation/homepage.xhtml" target="_blank" rel="noopener"><span class="quick-icon">📱</span><span>Mobile</span></a>
-    <a class="quick-link" href="https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en" target="_blank" rel="noopener"><span class="quick-icon">🪪</span><span>Aadhaar</span></a>
-    <a class="quick-link" href="https://echallan.parivahan.gov.in/index/accused-challan" target="_blank" rel="noopener"><span class="quick-icon">🚨</span><span>eChallan</span></a>
-    <a class="quick-link" href="https://vahandetails.com" target="_blank" rel="noopener"><span class="quick-icon">🔎</span><span>Vehicle</span></a><a class="quick-link sheet-link" href="https://docs.google.com/spreadsheets/d/1S8a5kqVttJa7TSijjkEUzmL-F7rc039LHltu7rCi5j0/edit?gid=1544491919#gid=1544491919" target="_blank" rel="noopener"><span class="quick-icon">📊</span><span>Records</span></a>
-  </nav>
-</header>
+</div>
 
-<main class="container">
-  <div class="section-kicker">OVERVIEW</div>
-  <h1 class="page-title">Vehicle Dashboard</h1>
-
-  <section class="dashboard">
-    <div class="dashboard-card"><div class="dashboard-number" id="totalVehicles">0</div><div class="dashboard-label">Valid Vehicles</div></div>
-    <div class="dashboard-card due"><div class="dashboard-number" id="dueVehicles">0</div><div class="dashboard-label">Due in 10 Days</div></div>
-    <div class="dashboard-card urgent"><div class="dashboard-number" id="urgentVehicles">0</div><div class="dashboard-label">Urgent</div></div>
-    <div class="dashboard-card expired"><div class="dashboard-number" id="expiredVehicles">0</div><div class="dashboard-label">Expired</div></div>
-  </section>
-  <section class="dashboard-small">
-    <div class="dashboard-card done"><div class="dashboard-number" id="callDone">0</div><div class="dashboard-label">Call Done</div></div>
-    <div class="dashboard-card cant"><div class="dashboard-number" id="cantConnect">0</div><div class="dashboard-label">Can't Connect</div></div>
-  </section>
-
-  <section class="controls">
-    <input id="searchInput" class="search-box" type="text" placeholder="Search Registration Number / Phone Number / Vehicle Name" autocomplete="off">
-    <div class="records-toolbar no-print">
-      <button type="button" id="upcomingView" class="btn records-btn active">🔔 Expired &amp; Soon Expiring</button>
-      <button type="button" id="vehicleRecordsView" class="btn records-btn">📋 Vehicle Records</button>
-      <button type="button" id="pdfButton" class="btn pdf-btn" style="display:none">📄 Save All Data as PDF</button>
-      <button type="button" id="addVehicleBtn" class="btn add-btn">➕ Add New Vehicle</button><button type="button" id="changePasswordBtn" class="btn security-btn">🔑 Change Password</button><button type="button" id="refreshData" class="btn refresh-btn">🔄 Refresh Google Sheet</button>
+<div id="passwordModal" class="modal">
+  <div class="modal-box">
+    <h2>🔑 Password Settings</h2>
+    <p>Change your existing website login password or Records password.</p>
+    <div class="form-actions">
+      <button class="save-new" id="changeLoginPasswordBtn">Website Login Password</button>
+      <button class="security-btn" id="changeRecordsPasswordBtn">Records Password</button>
     </div>
-  </section>
+    <div class="form-actions"><button class="cancel-new" id="cancelPassword">Cancel</button></div>
+  </div>
+</div>
 
-  <div class="pdf-title"><h2>SMOGCERT SOLUTIONS — Complete Vehicle Records</h2><p>All Google Sheet vehicle data</p></div>
-  <section class="table-card">
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Registration No</th><th>Phone</th><th>Vehicle Name</th><th>Fuel Type</th>
-          <th>PUCC Expiry</th><th>Days Left</th><th>Expiry Status</th><th>Record Status</th><th>Action</th>
-        </tr></thead>
-        <tbody id="tableBody"><tr><td colspan="9" style="text-align:center;padding:30px">Loading vehicles...</td></tr></tbody>
-      </table>
+
+<div id="passwordChangeModal" class="modal">
+  <div class="modal-box">
+    <h2 id="passwordChangeTitle">🔑 Change Password</h2>
+    <p id="passwordChangeHelp">Enter your existing password and new password.</p>
+    <div class="form-grid">
+      <label>Existing Password
+        <input id="currentChangePassword" type="password" autocomplete="current-password" placeholder="Enter existing password">
+      </label>
+      <label>New Password
+        <input id="newChangePassword" type="password" autocomplete="new-password" placeholder="Minimum 8 characters">
+      </label>
+      <label>Confirm New Password
+        <input id="confirmChangePassword" type="password" autocomplete="new-password" placeholder="Re-enter new password">
+      </label>
     </div>
+    <div id="passwordChangeMessage" style="min-height:20px;margin-top:10px;text-align:center;font-size:13px;font-weight:800;color:#dc2626"></div>
+    <div class="form-actions">
+      <button class="cancel-new" id="cancelPasswordChange" type="button">Cancel</button>
+      <button class="save-new" id="savePasswordChange" type="button">Change Password</button>
+    </div>
+  </div>
+</div>
+
+<div id="miniVehicleModal" class="modal">
+  <div class="modal-box mini-list-box">
+    <div class="mini-list-head"><h2 id="miniVehicleTitle">Vehicle Details</h2><button id="closeMiniVehicle" class="mini-close" type="button">✕</button></div>
+    <div id="miniVehicleSummary" class="mini-summary"></div>
+    <div class="mini-list-wrap"><table class="mini-table">
+      <thead><tr><th>Registration</th><th>Phone</th><th>Vehicle</th><th>Expiry</th><th>Days</th><th>Status</th></tr></thead>
+      <tbody id="miniVehicleBody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<div id="app" class="app-shell">
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="side-logo">SC</div>
+      <div class="side-name">SMOGCERT <span>SOLUTIONS</span></div>
+      <div class="side-tag">Pollution Certificate Reminder &amp;<br>Vehicle Management</div>
+    </div>
+
+    <nav class="side-nav">
+      <button class="side-link active" type="button"><span class="side-icon">▦</span>Dashboard</button>
+      <a class="side-link" href="https://puc.parivahan.gov.in/puc/" target="_blank" rel="noopener"><span class="side-icon">🛡️</span>PUCC</a>
+      <a class="side-link" href="https://vahan.parivahan.gov.in/vahanservice/vahan/ui/statevalidation/homepage.xhtml" target="_blank" rel="noopener"><span class="side-icon">📱</span>Mobile</a>
+      <a class="side-link" href="https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en" target="_blank" rel="noopener"><span class="side-icon">🪪</span>Aadhaar</a>
+      <a class="side-link" href="https://echallan.parivahan.gov.in/index/accused-challan" target="_blank" rel="noopener"><span class="side-icon">🧾</span>eChallan</a>
+      <a class="side-link" href="https://vahandetails.com" target="_blank" rel="noopener"><span class="side-icon">🚘</span>Vehicle Details</a>
+      <a class="side-link" id="sheetLink" href="https://docs.google.com/spreadsheets/d/1S8a5kqVttJa7TSijjkEUzmL-F7rc039LHltu7rCi5j0/edit?gid=1544491919#gid=1544491919" target="_blank" rel="noopener"><span class="side-icon">📄</span>Records</a>
+      <button class="side-link" id="settingsBtn" type="button"><span class="side-icon">⚙️</span>Settings</button>
+    </nav>
+
+    <div class="side-bottom">
+      <button class="side-link" id="topChangePasswordBtn" type="button"><span class="side-icon">🔒</span>Password</button>
+      <button class="side-link" id="topLogoutBtn" type="button"><span class="side-icon">↪</span>Logout</button>
+    </div>
+  </aside>
+
+  <section class="content">
+    <header class="topbar">
+      <div class="top-title">Vehicle Dashboard</div>
+      <div class="top-search"><span>⌕</span><input id="topSearchInput" type="text" placeholder="Search Registration Number / Phone Number / Vehicle Name"></div>
+      <div class="admin-area"><span class="bell">♧</span><span class="admin-avatar">SC</span><span>Smogcert Admin⌄</span></div>
+    </header>
+
+    <main class="workspace">
+      <div class="add-row"><button id="addVehicleBtn" class="add-vehicle-main" type="button"><span>＋</span>Add Vehicle Details</button></div>
+
+      <section class="metric-grid">
+        <button class="metric-card metric-total" type="button">
+          <span class="metric-icon">🚗</span><span><span class="metric-number" id="totalVehicles">0</span><span class="metric-label">Total Vehicles</span></span>
+        </button>
+        <button class="metric-card metric-done status-filter" type="button" data-filter="callDone">
+          <span class="metric-icon">📞</span><span><span class="metric-number" id="callDone">0</span><span class="metric-label">Call Done</span></span>
+        </button>
+        <button class="metric-card metric-cant status-filter" type="button" data-filter="cantConnect">
+          <span class="metric-icon">📵</span><span><span class="metric-number" id="cantConnect">0</span><span class="metric-label">Can't Connect</span></span>
+        </button>
+        <button class="metric-card metric-closed status-filter" type="button" data-filter="closed">
+          <span class="metric-icon">🔒</span><span><span class="metric-number" id="closedVehicles">0</span><span class="metric-label">Closed</span></span>
+        </button>
+        <button class="metric-card metric-urgent status-filter" type="button" data-filter="urgent">
+          <span class="metric-icon">◷</span><span><span class="metric-number" id="urgentVehicles">0</span><span class="metric-label">Expiring Soon<br>(0–3 Days)</span></span>
+        </button>
+        <button class="metric-card metric-expired status-filter" type="button" data-filter="expired">
+          <span class="metric-icon">⚠</span><span><span class="metric-number" id="expiredVehicles">0</span><span class="metric-label">Expired</span></span>
+        </button>
+      </section>
+
+      <!-- Hidden counters retained for mini-screen filters -->
+      <span id="expiredFiveDays" hidden>0</span>
+      <span id="expiredOlderThanFive" hidden>0</span>
+
+      <section class="filter-panel">
+        <div class="filter-row">
+          <div class="field-search"><span>⌕</span><input id="searchInput" type="text" placeholder="Search Registration Number / Phone Number / Vehicle Name"></div>
+          <div class="select-field"><label>Expiry Status</label><select id="expiryFilter"><option value="all">All</option><option value="valid">Valid</option><option value="soon">Soon Expiring</option><option value="urgent">Urgent 0–3 Days</option><option value="expired">Expired</option></select></div>
+          <div class="select-field"><label>Record Status</label><select id="recordFilter"><option value="all">All</option><option>Pending</option><option>Call Done</option><option>Can't Connect</option><option>Closed</option><option>Updated</option></select></div>
+          <button id="clearFilters" class="clear-btn" type="button">↻ &nbsp; Clear Filters</button>
+        </div>
+        <div class="filter-actions">
+          <button type="button" id="upcomingView" class="view-btn active">🔔 &nbsp; Expired &amp; Soon Expiring</button>
+          <button type="button" id="vehicleRecordsView" class="view-btn">▣ &nbsp; Vehicle Records</button>
+          <button type="button" id="refreshData" class="refresh-btn">▤ &nbsp; Refresh Google Sheet</button>
+          <button type="button" id="pdfButton" class="pdf-btn" style="display:none">📄 Save All Data as PDF</button>
+        </div>
+      </section>
+
+      <div id="message"></div>
+      <section class="table-card">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Registration No</th><th>Phone</th><th>Vehicle Name</th><th>Fuel Type</th><th>PUCC Expiry</th><th>Days Left</th><th>Expiry Status</th><th>Record Status</th><th>Action</th></tr></thead>
+          <tbody id="tableBody"><tr><td colspan="9" style="text-align:center;padding:30px">Please log in...</td></tr></tbody>
+        </table></div>
+        <div class="table-footer"><div id="entriesInfo">Showing 0 entries</div><div class="pagination" id="pagination"></div></div>
+      </section>
+    </main>
   </section>
-</main>
-<script>
-(function(){
- const U='admin',P='ASDF@321',K='smogcert_session_v2';
- function show(){document.body.classList.remove('locked');const g=document.getElementById('loginGate');if(g)g.style.display='none';}
- function lock(){document.body.classList.add('locked');const g=document.getElementById('loginGate');if(g)g.style.display='flex';}
- function login(){const u=(document.getElementById('loginUser').value||'').trim(),p=document.getElementById('loginPass').value||'',e=document.getElementById('loginError');if(u===U&&p===P){sessionStorage.setItem(K,'1');e.textContent='';show();}else{e.textContent='Invalid username or password';document.getElementById('loginPass').value='';document.getElementById('loginPass').focus();}}
- window.__smogLogin={show,lock};
- document.addEventListener('DOMContentLoaded',function(){document.getElementById('loginBtn').onclick=login;document.getElementById('loginPass').onkeydown=e=>{if(e.key==='Enter')login();};if(sessionStorage.getItem(K)==='1')show();else lock();});
-})();
-</script>
-<script src="script.js?v=20260816-8"></script>
+</div>
+
+<script src="script.js?v=sidebar-design-13"></script>
 </body>
 </html>
