@@ -1,3 +1,53 @@
+
+// ======================================================
+// SMOGCERT SIMPLE LOGIN
+// Change these two values if you want a different login.
+// ======================================================
+const SMOGCERT_USERNAME = "admin";
+const SMOGCERT_PASSWORD = "ASDF@321";
+const SMOGCERT_LOGIN_KEY = "smogcert_logged_in";
+
+function smogcertShowApp(){
+  document.body.classList.remove("smogcert-locked");
+  const login=document.getElementById("smogcertLogin");
+  const logout=document.getElementById("smogcertLogout");
+  if(login)login.style.display="none";
+  if(logout)logout.style.display="block";
+}
+function smogcertShowLogin(){
+  document.body.classList.add("smogcert-locked");
+  const login=document.getElementById("smogcertLogin");
+  const logout=document.getElementById("smogcertLogout");
+  if(login)login.style.display="flex";
+  if(logout)logout.style.display="none";
+}
+function smogcertLogin(){
+  const u=(document.getElementById("loginUsername")?.value||"").trim();
+  const p=document.getElementById("loginPassword")?.value||"";
+  const err=document.getElementById("loginError");
+  if(u===SMOGCERT_USERNAME && p===SMOGCERT_PASSWORD){
+    sessionStorage.setItem(SMOGCERT_LOGIN_KEY,"1");
+    if(err)err.textContent="";
+    smogcertShowApp();
+  }else{
+    if(err)err.textContent="Invalid username or password";
+    const pass=document.getElementById("loginPassword");
+    if(pass){pass.value="";pass.focus();}
+  }
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  document.getElementById("loginButton")?.addEventListener("click",smogcertLogin);
+  document.getElementById("loginPassword")?.addEventListener("keydown",e=>{
+    if(e.key==="Enter")smogcertLogin();
+  });
+  document.getElementById("smogcertLogout")?.addEventListener("click",()=>{
+    sessionStorage.removeItem(SMOGCERT_LOGIN_KEY);
+    location.reload();
+  });
+  if(sessionStorage.getItem(SMOGCERT_LOGIN_KEY)==="1")smogcertShowApp();
+  else smogcertShowLogin();
+});
+
 const API_URL="https://script.google.com/macros/s/AKfycbwBTQDO6XKogjzLnJfo-PQSUissGMED1WFVpGKQRaY400OL6N9ntfTQezavI9kpCOuMvA/exec";
 let vehicleData=[],currentView="upcoming";
 const $=id=>document.getElementById(id);

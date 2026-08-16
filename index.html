@@ -30,8 +30,62 @@ body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-grad
 @media(max-width:560px){.brand-name{font-size:23px}.dashboard{grid-template-columns:1fr}.dashboard-small{grid-template-columns:1fr}.container{padding:22px 12px}}
 @media print{body{background:#fff}.top-header,.controls,.dashboard,.dashboard-small,.no-print{display:none!important}.container{padding:0}.pdf-title{display:block;text-align:center}.table-card{box-shadow:none}.table-wrap{overflow:visible}table{min-width:0;font-size:9px}th,td{padding:5px}}
 </style>
+
+<style id="smogcert-login-style">
+#smogcertLogin{
+  position:fixed;inset:0;z-index:99999;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;background:linear-gradient(135deg,#06284d,#0877c9);
+}
+#smogcertLogin .login-box{
+  width:min(420px,100%);background:#fff;border-radius:22px;
+  padding:34px;box-shadow:0 25px 70px rgba(0,0,0,.28);text-align:center;
+}
+#smogcertLogin .login-logo{
+  width:72px;height:72px;margin:0 auto 14px;border-radius:22px;
+  display:grid;place-items:center;color:#fff;font-weight:900;font-size:25px;
+  background:linear-gradient(135deg,#14b9e8,#0877c9);
+}
+#smogcertLogin h1{margin:0;color:#092c55;font-size:27px}
+#smogcertLogin p{color:#64748b;margin:8px 0 24px}
+#smogcertLogin input{
+  width:100%;padding:14px;border:1px solid #cbd5e1;border-radius:10px;
+  margin-bottom:12px;font-size:16px;outline:none;
+}
+#smogcertLogin input:focus{border-color:#0877c9;box-shadow:0 0 0 3px #0877c91a}
+#smogcertLogin button{
+  width:100%;padding:14px;border:0;border-radius:10px;
+  background:#0877c9;color:#fff;font-size:16px;font-weight:800;cursor:pointer;
+}
+#smogcertLogin button:hover{background:#075b99}
+#smogcertLogin .login-error{color:#dc2626;font-weight:700;min-height:22px;margin:10px 0}
+body.smogcert-locked{overflow:hidden}
+body.smogcert-locked>header,
+body.smogcert-locked>main,
+body.smogcert-locked>footer{display:none!important}
+#smogcertLogout{
+  position:fixed;right:18px;bottom:18px;z-index:9998;
+  border:0;border-radius:10px;padding:10px 14px;background:#dc2626;
+  color:#fff;font-weight:800;cursor:pointer;box-shadow:0 5px 16px #0002;
+}
+</style>
+
 </head>
-<body>
+<body class="smogcert-locked">
+
+<div id="smogcertLogin">
+  <div class="login-box">
+    <div class="login-logo">SC</div>
+    <h1>SMOGCERT SOLUTIONS</h1>
+    <p>Secure Vehicle Management</p>
+    <input id="loginUsername" type="text" placeholder="Username" autocomplete="username">
+    <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+    <div id="loginError" class="login-error"></div>
+    <button id="loginButton" type="button">🔐 Login</button>
+  </div>
+</div>
+<button id="smogcertLogout" type="button" style="display:none">🔒 Logout</button>
+
 <header class="top-header">
   <div class="brand-wrap">
     <div class="brand-logo">SC</div>
@@ -87,6 +141,6 @@ body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-grad
     </div>
   </section>
 </main>
-<script src="script.js?v=20260816-6"></script>
+<script src="script.js?v=20260816-7"></script>
 </body>
 </html>
