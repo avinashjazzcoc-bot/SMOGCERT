@@ -295,15 +295,15 @@ function renderVehicles() {
     const dayText = d === null ? "—" : d < 0 ? `${Math.abs(d)} days ago` : d === 0 ? "Today" : `${d} days`;
 
     return `<tr>
-      <td><strong>${escapeHtml(v.vehicleNumber)}</strong></td>
-      <td>${escapeHtml(maskPhone(v.mobileNumber))}</td>
-      <td>${escapeHtml(v.vehicleName || "unknown")}</td>
-      <td>${escapeHtml(v.fuelType || "unknown")}</td>
-      <td>${escapeHtml(formatExpiryForVehicle(v))}</td>
-      <td class="${daysCls}">${dayText}</td>
-      <td><span class="record-expiry ${cls}">${label}</span></td>
-      <td>${escapeHtml(v.status || "Pending")}</td>
-      <td><div class="action-buttons">
+      <td data-label="Registration"><strong>${escapeHtml(v.vehicleNumber)}</strong></td>
+      <td data-label="Phone">${escapeHtml(maskPhone(v.mobileNumber))}</td>
+      <td data-label="Vehicle">${escapeHtml(v.vehicleName || "unknown")}</td>
+      <td data-label="Fuel">${escapeHtml(v.fuelType || "unknown")}</td>
+      <td data-label="PUCC Expiry">${escapeHtml(formatExpiryForVehicle(v))}</td>
+      <td data-label="Days Left" class="${daysCls}">${dayText}</td>
+      <td data-label="Expiry Status"><span class="record-expiry ${cls}">${label}</span></td>
+      <td data-label="Record Status">${escapeHtml(v.status || "Pending")}</td>
+      <td data-label="Actions"><div class="action-buttons">
         <button class="callDone" onclick="markStatus('callDone',${Number(v.rowNumber)})">Call Done</button>
         <button class="cantConnect" onclick="markStatus('cantConnect',${Number(v.rowNumber)})">Can't Connect</button>
         <button class="renew" onclick="renewVehicle(${Number(v.rowNumber)})">Renew</button>
@@ -585,12 +585,12 @@ function openMiniVehicleScreen(filterName) {
         days + " days";
 
       return `<tr>
-        <td><strong>${escapeHtml(v.vehicleNumber)}</strong></td>
+        <td data-label="Registration"><strong>${escapeHtml(v.vehicleNumber)}</strong></td>
         <td>${escapeHtml(v.mobileNumber)}</td>
         <td>${escapeHtml(v.vehicleName)}</td>
-        <td>${escapeHtml(formatExpiryForVehicle(v))}</td>
+        <td data-label="PUCC Expiry">${escapeHtml(formatExpiryForVehicle(v))}</td>
         <td>${dayText}</td>
-        <td>${escapeHtml(v.status || "Pending")}</td>
+        <td data-label="Record Status">${escapeHtml(v.status || "Pending")}</td>
       </tr>`;
     }).join("");
   }
@@ -606,8 +606,44 @@ function syncTopSearch() {
   if ($("topSearchInput")) $("topSearchInput").value = $("searchInput").value;
 }
 
+function openMobileSidebar() {
+  if (!$("sidebar")) return;
+  $("sidebar").classList.add("mobile-open");
+  $("mobileOverlay").classList.add("show");
+}
+
+function closeMobileSidebar() {
+  if (!$("sidebar")) return;
+  $("sidebar").classList.remove("mobile-open");
+  $("mobileOverlay").classList.remove("show");
+}
+
 function bindUI() {
   $("loginBtn").onclick = login;
+  if ($("mobileMenuBtn")) $("mobileMenuBtn").onclick = openMobileSidebar;
+  if ($("mobileMenuClose")) $("mobileMenuClose").onclick = closeMobileSidebar;
+  if ($("mobileOverlay")) $("mobileOverlay").onclick = closeMobileSidebar;
+
+  if ($("mobileDashboardBtn")) $("mobileDashboardBtn").onclick = () => {
+    closeMobileSidebar();
+    window.scrollTo({top:0,behavior:"smooth"});
+  };
+  if ($("mobileAddBtn")) $("mobileAddBtn").onclick = () => {
+    $("addVehicleModal").classList.add("show");
+    updateAddVehicleExpiryPreview();
+  };
+  if ($("mobileRecordsBtn")) $("mobileRecordsBtn").onclick = async () => {
+    if (!(await verifyRecordsPassword())) return;
+    currentView = "records";
+    currentPage = 1;
+    $("vehicleRecordsView").classList.add("active");
+    $("upcomingView").classList.remove("active");
+    $("pdfButton").style.display = "inline-block";
+    renderVehicles();
+    window.scrollTo({top:document.querySelector(".filter-panel").offsetTop-70,behavior:"smooth"});
+  };
+  if ($("mobileRefreshBtn")) $("mobileRefreshBtn").onclick = loadVehicles;
+  if ($("mobileMoreBtn")) $("mobileMoreBtn").onclick = openMobileSidebar;
   $("loginPass").onkeydown = e => { if (e.key === "Enter") login(); };
   $("topLogoutBtn").onclick = logout;
   $("refreshData").onclick = loadVehicles;
@@ -683,8 +719,15 @@ function bindUI() {
 
   $("sheetLink").onclick = async e => {
     e.preventDefault();
+    closeMobileSidebar();
     if (await verifyRecordsPassword()) window.open(SHEET_URL, "_blank", "noopener");
   };
+
+  document.querySelectorAll(".sidebar .side-link").forEach(el => {
+    el.addEventListener("click", () => {
+      if (window.innerWidth <= 800) closeMobileSidebar();
+    });
+  });
 }
 
 function escapeHtml(value) {
