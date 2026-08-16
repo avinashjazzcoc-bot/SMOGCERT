@@ -305,6 +305,148 @@ function renderFilteredVehicles() {
     }
 }
 
+
+function parseDate(value) {
+    if (!value) return null;
+
+    if (value instanceof Date && !isNaN(value.getTime())) {
+        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+
+    const text = String(value).trim();
+
+    let m = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+
+    m = text.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+    if (m) {
+        return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    }
+
+    const d = new Date(text);
+    if (!isNaN(d.getTime())) {
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
+    return null;
+}
+
+function calculateExpiry(timestamp, validity) {
+    const start = parseDate(timestamp);
+    if (!start) return null;
+
+    const expiry = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate()
+    );
+
+    const text = String(validity || "").trim().toLowerCase();
+
+    if (text === "6 month" || text === "6 months" || text === "6m") {
+        expiry.setMonth(expiry.getMonth() + 6);
+        return expiry;
+    }
+
+    if (
+        text === "1 year" ||
+        text === "1 years" ||
+        text === "12 month" ||
+        text === "12 months" ||
+        text === "1y"
+    ) {
+        expiry.setFullYear(expiry.getFullYear() + 1);
+        return expiry;
+    }
+
+    const monthMatch = text.match(/(\d+)\s*months?/);
+    if (monthMatch) {
+        expiry.setMonth(expiry.getMonth() + Number(monthMatch[1]));
+        return expiry;
+    }
+
+    const yearMatch = text.match(/(\d+)\s*years?/);
+    if (yearMatch) {
+        expiry.setFullYear(expiry.getFullYear() + Number(yearMatch[1]));
+        return expiry;
+    }
+
+    return null;
+}
+
+function getDaysLeft(expiry) {
+    if (!expiry) return null;
+
+    const now = new Date();
+    const today = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+    );
+
+    return Math.round((expiry.getTime() - today.getTime()) / 86400000);
+}
+
+function getExpiryInfo(vehicle) {
+    const timestamp = getVehicleValue(vehicle, [
+        "timestamp", "Timestamp"
+    ]);
+
+    const validity = getVehicleValue(vehicle, [
+        "validUpto", "valid upto", "valid up to"
+    ]);
+
+    const expiry = calculateExpiry(timestamp, validity);
+    const days = getDaysLeft(expiry);
+
+    let label = "Unknown";
+    let cls = "status-other";
+
+    if (days === null) {
+        label = "Unknown";
+    } else if (days < 0) {
+        label = "Expired";
+        cls = "status-expired";
+    } else if (days <= 3) {
+        label = "Urgent";
+        cls = "status-urgent";
+    } else if (days <= 10) {
+        label = "Due Soon";
+        cls = "status-due";
+    } else {
+        label = "Valid";
+        cls = "status-valid";
+    }
+
+    return { expiry, days, label, cls };
+}
+
+function getDaysDisplay(info) {
+    if (info.days === null) {
+        return { text: "—", cls: "" };
+    }
+
+    if (info.days < 0) {
+        const n = Math.abs(info.days);
+        return {
+            text: n + " day" + (n === 1 ? "" : "s") + " overdue",
+            cls: "days-expired"
+        };
+    }
+
+    if (info.days === 0) {
+        return { text: "TODAY", cls: "days-urgent" };
+    }
+
+    return {
+        text: info.days + " day" + (info.days === 1 ? "" : "s"),
+        cls: info.days <= 3 ? "days-urgent" :
+              info.days <= 10 ? "days-due" : "days-valid"
+    };
+}
+
 function getTimestampMillis(vehicle) {
     const timestamp = getVehicleValue(vehicle, [
         "timestamp", "Timestamp", "date", "Date"
