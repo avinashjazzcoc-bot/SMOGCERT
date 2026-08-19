@@ -62,7 +62,7 @@ body.locked #app{display:none}
 .field-search{position:relative}.field-search span{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#6f8198}.field-search input{width:100%;height:54px;padding:0 16px 0 48px;border:1px solid #d5deea;border-radius:9px}
 .select-field{position:relative}.select-field label{display:block;font-size:12px;color:#60738b;margin-bottom:5px}.select-field select{width:100%;height:54px;border:1px solid #d5deea;border-radius:9px;padding:0 13px;background:#fff;color:#102744}
 .clear-btn{height:54px;border:1px solid #d5deea;background:#fff;border-radius:9px;font-weight:800;color:#233b5a;cursor:pointer}.filter-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
-.view-btn{height:42px;border:1px solid #d4dfec;background:#fff;color:#0877e8;border-radius:7px;padding:0 16px;font-weight:850;cursor:pointer}.view-btn.active{background:#0877e8;color:#fff;border-color:#0877e8}.refresh-btn{height:42px;border:1px solid #d4dfec;background:#fff;color:#233b5a;border-radius:7px;padding:0 16px;font-weight:850;cursor:pointer}.pdf-btn{height:42px;border:0;background:#dc2626;color:#fff;border-radius:7px;padding:0 16px;font-weight:850;cursor:pointer}
+.view-btn{height:42px;border:1px solid #d4dfec;background:#fff;color:#0877e8;border-radius:7px;padding:0 16px;font-weight:850;cursor:pointer}.view-btn.active{background:#0877e8;color:#fff;border-color:#0877e8}.refresh-btn{height:42px;border:1px solid #d4dfec;background:#fff;color:#233b5a;border-radius:7px;padding:0 16px;font-weight:850;cursor:pointer}.excel-btn{height:42px;border:0;background:#15803d;color:#fff;border-radius:7px;padding:0 16px;font-weight:850;cursor:pointer}
 
 .table-card{background:#fff;border:1px solid var(--border);border-radius:11px;overflow:hidden;box-shadow:0 4px 14px #1027440b}.table-wrap{overflow:auto}
 table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-gradient(90deg,#096bd6,#0877e8);color:#fff;text-align:left;font-size:12px;padding:14px 13px}td{padding:13px;border-bottom:1px solid #e7edf4;font-size:12px;color:#263c59}tbody tr:hover{background:#f8fbff}
@@ -422,7 +422,7 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
     gap:8px;
     margin-top:10px;
   }
-  .view-btn,.refresh-btn,.pdf-btn{
+  .view-btn,.refresh-btn,.excel-btn{
     width:100%;
     height:42px;
     padding:0 8px;
@@ -545,7 +545,854 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
   tbody td{grid-template-columns:96px minmax(0,1fr)}
 }
 
+
+.existing-vehicle-panel{margin:10px 24px 0;padding:14px;border:1px solid #ffd49b;border-left:5px solid #f59e0b;border-radius:13px;background:linear-gradient(135deg,#fffaf1,#fff)}
+.existing-vehicle-head{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.existing-found-icon{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#fff0d8;font-size:19px}
+.existing-vehicle-head strong{display:block;color:#9a5200;font-size:14px}
+.existing-vehicle-head small{display:block;margin-top:2px;color:#7e6a51;font-size:11px}
+.existing-vehicle-details{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:11px}
+.existing-vehicle-details>div{padding:8px 10px;border:1px solid #f0e2cc;background:#fff;border-radius:9px}
+.existing-vehicle-details span{display:block;color:#8a7964;font-size:10px;font-weight:800;text-transform:uppercase}
+.existing-vehicle-details strong{display:block;margin-top:3px;color:#293f57;font-size:12px}
+.existing-action-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.edit-existing-btn{height:42px;border:0;border-radius:9px;background:#334155;color:#fff;font-weight:900;cursor:pointer}
+.edit-existing-full{width:100%}.update-existing-btn{width:100%;height:42px;border:0;border-radius:9px;background:linear-gradient(90deg,#f59e0b,#0877e8);color:#fff;font-weight:900;cursor:pointer}
+.vehicle-save:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+@media(max-width:620px){.existing-vehicle-panel{margin:10px 16px 0}.existing-vehicle-details{grid-template-columns:1fr}}
+
+
+/* SMOGCERT compact success popup */
+.success-mini-box{width:min(360px,92vw)!important;text-align:center;padding:26px 24px!important;border-radius:20px!important}
+.success-mini-icon{width:62px;height:62px;margin:0 auto 14px;border-radius:50%;display:grid;place-items:center;background:#dcfce7;color:#16a34a;font-size:34px;font-weight:900}
+.success-mini-box h3{margin:0 0 7px;color:#102b4d;font-size:21px}.success-mini-box p{margin:0 0 20px;color:#64748b;font-size:13px;line-height:1.5}.success-mini-ok{width:100%;border:0;border-radius:10px;padding:12px;background:linear-gradient(90deg,#10b981,#0877c9);color:#fff;font-weight:900;cursor:pointer}
+
+/* V22 success popup layering + visible action buttons */
+#successMiniModal{z-index:120500!important}
+#editVehicleModal{z-index:120000}
+#successMiniModal .modal-box{
+  width:min(360px,92vw);
+  text-align:center;
+  padding:24px 22px;
+  border-radius:18px;
+  box-shadow:0 30px 90px rgba(0,0,0,.38);
+}
+#successMiniOk{
+  width:100%;
+  min-height:46px;
+  margin-top:14px;
+  border:0;
+  border-radius:10px;
+  background:#16a34a;
+  color:#fff;
+  font-weight:900;
+  font-size:15px;
+  cursor:pointer;
+}
+#editVehicleModal .vehicle-form-actions{
+  position:sticky;
+  bottom:0;
+  z-index:5;
+  background:#fff;
+  padding:14px 0 2px;
+  margin-top:12px;
+  border-top:1px solid #e6edf4;
+}
+#editVehicleModal .vehicle-form-actions button{
+  min-height:48px;
+  font-size:14px;
+}
+#editVehicleModal #saveEditVehicle{
+  background:linear-gradient(90deg,#08a967,#0877e8)!important;
+  color:#fff!important;
+  border:0!important;
+  box-shadow:0 8px 20px rgba(8,119,232,.22);
+}
+#editVehicleModal #cancelEditVehicle{
+  background:#eef2f6!important;
+  color:#334155!important;
+  border:1px solid #d7e0e9!important;
+}
+@media(max-width:620px){
+  #editVehicleModal .vehicle-form-actions{
+    position:sticky;
+    bottom:-1px;
+    padding:12px 0 4px;
+  }
+  #editVehicleModal .vehicle-form-actions button{
+    min-height:50px;
+  }
+}
+
+
+/* V23 - Existing vehicle Edit/Update button always clearly visible */
+#addVehicleModal{
+  padding:12px;
+}
+
+#addVehicleModal .vehicle-add-box{
+  width:min(610px,96vw);
+  max-height:94vh;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  padding-bottom:18px;
+  scrollbar-gutter:stable;
+}
+
+#addVehicleModal .vehicle-add-head{
+  position:sticky;
+  top:0;
+  z-index:12;
+}
+
+#addVehicleModal .existing-vehicle-panel{
+  margin-bottom:14px;
+  padding-bottom:14px;
+}
+
+#addVehicleModal .edit-existing-full{
+  display:block!important;
+  width:100%!important;
+  min-height:50px;
+  padding:11px 14px;
+  margin-top:10px;
+  border-radius:10px;
+  background:linear-gradient(90deg,#334155,#0877e8)!important;
+  color:#fff!important;
+  font-size:14px;
+  font-weight:900;
+  line-height:1.25;
+  text-align:center;
+  box-shadow:0 8px 20px rgba(8,119,232,.22);
+  position:sticky;
+  bottom:8px;
+  z-index:15;
+}
+
+#addVehicleModal .edit-existing-full:hover{
+  transform:translateY(-1px);
+  box-shadow:0 10px 24px rgba(8,119,232,.30);
+}
+
+#addVehicleModal .vehicle-form-actions{
+  padding-bottom:8px;
+}
+
+@media(max-width:620px){
+  #addVehicleModal{
+    align-items:flex-start;
+    padding:6px;
+  }
+
+  #addVehicleModal .vehicle-add-box{
+    width:98vw;
+    max-height:96vh;
+    margin-top:4px;
+    border-radius:16px;
+  }
+
+  #addVehicleModal .vehicle-add-head{
+    padding:15px 16px;
+  }
+
+  #addVehicleModal .vehicle-form-grid{
+    gap:10px;
+    padding-top:12px;
+  }
+
+  #addVehicleModal .existing-vehicle-panel{
+    margin:8px 12px 14px;
+    padding:11px;
+  }
+
+  #addVehicleModal .existing-vehicle-details{
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+
+  #addVehicleModal .edit-existing-full{
+    min-height:52px;
+    font-size:13px;
+    bottom:6px;
+  }
+}
+
+@media(max-width:390px){
+  #addVehicleModal .existing-vehicle-details{
+    grid-template-columns:1fr;
+  }
+}
+
+
+/* V26 dashboard row layout */
+.dashboard-row{display:grid;gap:16px;margin-bottom:16px}
+.dashboard-row-primary{grid-template-columns:repeat(2,minmax(0,1fr))}
+.dashboard-row-expiry{grid-template-columns:repeat(3,minmax(0,1fr))}
+.dashboard-row-status{grid-template-columns:repeat(3,minmax(0,190px));justify-content:center;gap:12px;margin-bottom:26px}
+.metric-add .metric-icon{background:#eef7ff;color:#0877e8;border-color:#bfddff;font-size:34px;font-weight:900}
+.metric-add .metric-number{color:#0877e8}
+.add-word{font-size:20px!important;letter-spacing:1px}
+.metric-expired-five .metric-icon{background:#fff6ed;color:#e97700;border-color:#ffd4ad}
+.metric-expired-five .metric-number{color:#e97700}
+.metric-expired-old .metric-icon{background:#fff1f2;color:#c81731;border-color:#ffc5c7}
+.metric-expired-old .metric-number{color:#c81731}
+.metric-small{min-height:82px;padding:12px 14px}
+.metric-small .metric-icon{width:44px;height:44px;flex-basis:44px;font-size:20px}
+.metric-small .metric-number{font-size:23px}
+.metric-small .metric-label{font-size:11px;margin-top:4px}
+@media(max-width:800px){
+  .dashboard-row-primary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dashboard-row-expiry{grid-template-columns:1fr}
+  .dashboard-row-status{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:520px){
+  .dashboard-row-primary{grid-template-columns:1fr 1fr;gap:9px}
+  .dashboard-row-primary .metric-card{min-height:105px;padding:12px 9px}
+  .dashboard-row-primary .metric-icon{width:48px;height:48px;flex-basis:48px;font-size:23px}
+  .dashboard-row-primary .metric-number{font-size:23px}
+  .dashboard-row-status{grid-template-columns:1fr;gap:8px}
+}
+
+
+.closed-no-actions{display:inline-flex;align-items:center;gap:5px;padding:7px 9px;border-radius:7px;background:#eef2f7;color:#64748b;font-size:10px;font-weight:900;white-space:nowrap}
+
+/* V27 polished dashboard */
+.metric-card{
+  position:relative;overflow:hidden;
+  border:1px solid #dceaf5!important;
+  border-radius:16px!important;
+  background:linear-gradient(145deg,#fff,#f5faff)!important;
+  box-shadow:0 9px 24px rgba(17,55,86,.10)!important;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.metric-card::after{content:"";position:absolute;width:92px;height:92px;border-radius:50%;right:-40px;top:-45px;background:rgba(8,119,232,.055)}
+.metric-card:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(17,55,86,.16)!important}
+.metric-card .metric-icon{box-shadow:0 6px 15px rgba(17,55,86,.10)}
+.metric-total{border-left:5px solid #0877e8!important}
+.metric-add{border-left:5px solid #16a34a!important}
+.metric-urgent{border-left:5px solid #ef4444!important}
+.metric-expired-five{border-left:5px solid #f59e0b!important}
+.metric-expired-old{border-left:5px solid #991b1b!important}
+.metric-done{border-left:4px solid #16a34a!important}
+.metric-cant{border-left:4px solid #dc2626!important}
+.metric-closed{border-left:4px solid #64748b!important}
+
+.status-strip{
+  margin:12px 0 16px;padding:11px 14px;
+  border:1px solid #dbeaf5;border-radius:15px;
+  background:linear-gradient(135deg,#fff,#f2f9ff);
+  box-shadow:0 7px 20px rgba(17,55,86,.07)
+}
+.status-strip .dashboard-row-status{margin:0;grid-template-columns:repeat(3,minmax(0,180px));justify-content:center}
+.status-strip .metric-small{min-height:76px;padding:10px 13px;border-radius:13px!important}
+.status-strip .metric-small .metric-icon{width:40px;height:40px;flex-basis:40px;font-size:18px}
+.status-strip .metric-small .metric-number{font-size:22px}
+.status-strip .metric-small .metric-label{font-size:10px}
+
+.action-buttons{gap:7px!important}
+.action-buttons button{
+  min-height:34px;padding:8px 11px!important;border:0!important;border-radius:9px!important;
+  font-size:10px!important;font-weight:900!important;color:#fff!important;
+  box-shadow:0 5px 12px rgba(17,45,75,.16);
+  transition:transform .15s ease,box-shadow .15s ease,filter .15s ease
+}
+.action-buttons button:hover{transform:translateY(-2px);box-shadow:0 8px 16px rgba(17,45,75,.22);filter:brightness(1.05)}
+.action-buttons .callDone{background:linear-gradient(135deg,#22c55e,#15803d)!important}
+.action-buttons .cantConnect{background:linear-gradient(135deg,#ef4444,#b91c1c)!important}
+.action-buttons .renew{background:linear-gradient(135deg,#168eea,#075fb4)!important}
+.action-buttons .closeCase{background:linear-gradient(135deg,#64748b,#334155)!important}
+
+.filter-panel button,.metric-add,.clear-btn{
+  transition:transform .16s ease,box-shadow .16s ease,filter .16s ease
+}
+.filter-panel button:hover,.metric-add:hover,.clear-btn:hover{
+  transform:translateY(-2px);box-shadow:0 8px 18px rgba(17,55,86,.16);filter:brightness(1.03)
+}
+.view-btn{border-radius:10px!important;font-weight:850!important}
+.view-btn.active{box-shadow:0 6px 15px rgba(8,119,232,.22)}
+.refresh-btn{border-radius:10px!important;background:linear-gradient(135deg,#0877e8,#075aa8)!important}
+.excel-btn{border-radius:10px!important;background:linear-gradient(135deg,#16a34a,#0877e8)!important}
+.clear-btn{border-radius:10px!important}
+
+@media(max-width:620px){
+ .status-strip{padding:8px;margin:9px 0 12px}
+ .status-strip .dashboard-row-status{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+ .status-strip .metric-small{min-height:72px;padding:7px 4px;flex-direction:column;text-align:center;gap:2px}
+ .status-strip .metric-small .metric-icon{width:32px;height:32px;flex-basis:32px;font-size:14px}
+ .status-strip .metric-small .metric-number{font-size:18px}
+ .status-strip .metric-small .metric-label{font-size:8px}
+}
+
+
+/* V28 colorful actions + separate remarks popup */
+.remarks-action-box{
+  width:min(430px,94vw);
+  padding:0;
+  overflow:hidden;
+  border-radius:18px;
+}
+.remarks-head{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:18px 20px;
+  color:#fff;
+  background:linear-gradient(135deg,#0b2e59,#0877e8);
+}
+.remarks-icon{
+  width:46px;height:46px;border-radius:13px;
+  display:grid;place-items:center;
+  background:#ffffff1c;border:1px solid #ffffff30;
+  font-size:23px;
+}
+.remarks-head h2{margin:0;color:#fff;text-align:left;font-size:19px}
+.remarks-head p{margin:3px 0 0;color:#dbeeff;text-align:left;font-size:11px}
+.remarks-close{
+  position:absolute;right:14px;top:14px;
+  width:34px;height:34px;border:0;border-radius:9px;
+  background:#ffffff1b;color:#fff;font-weight:900;cursor:pointer
+}
+.remarks-field{display:block;padding:18px 20px 8px}
+.remarks-field>span{display:block;margin-bottom:6px;font-size:12px;font-weight:850;color:#304862}
+.remarks-field textarea{
+  width:100%;
+  resize:vertical;
+  min-height:100px;
+  padding:12px;
+  border:1px solid #d7e2ed;
+  border-radius:11px;
+  outline:none;
+  color:#102744;
+  background:#f9fbfd;
+}
+.remarks-field textarea:focus{
+  border-color:#0877e8;
+  background:#fff;
+  box-shadow:0 0 0 3px #0877e814
+}
+.remarks-actions{display:grid;grid-template-columns:1fr 1.2fr;gap:10px;padding:12px 20px 20px}
+.remarks-actions button{
+  height:44px;border-radius:10px;font-weight:900;cursor:pointer;border:0
+}
+.remarks-cancel{background:linear-gradient(135deg,#e2e8f0,#cbd5e1);color:#334155}
+.remarks-confirm{background:linear-gradient(135deg,#16a34a,#0877e8);color:#fff;box-shadow:0 7px 16px rgba(8,119,232,.18)}
+
+.action-buttons button{
+  position:relative;
+  overflow:hidden;
+  min-height:36px!important;
+  border-radius:10px!important;
+}
+.action-buttons button::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0));
+  pointer-events:none;
+}
+.action-buttons .callDone{
+  background:linear-gradient(135deg,#34d399,#059669)!important;
+  box-shadow:0 6px 14px rgba(5,150,105,.26)!important
+}
+.action-buttons .cantConnect{
+  background:linear-gradient(135deg,#fb7185,#dc2626)!important;
+  box-shadow:0 6px 14px rgba(220,38,38,.24)!important
+}
+.action-buttons .renew{
+  background:linear-gradient(135deg,#38bdf8,#2563eb)!important;
+  box-shadow:0 6px 14px rgba(37,99,235,.24)!important
+}
+.action-buttons .closeCase{
+  background:linear-gradient(135deg,#a78bfa,#6d28d9)!important;
+  box-shadow:0 6px 14px rgba(109,40,217,.24)!important
+}
+
+.view-btn{
+  background:linear-gradient(135deg,#eff6ff,#dbeafe)!important;
+  color:#075fb4!important;
+  border:1px solid #bfdbfe!important
+}
+.view-btn.active{
+  background:linear-gradient(135deg,#38bdf8,#2563eb)!important;
+  color:#fff!important
+}
+.refresh-btn{
+  background:linear-gradient(135deg,#22c55e,#15803d)!important;
+  color:#fff!important;border:0!important
+}
+.excel-btn{
+  background:linear-gradient(135deg,#16a34a,#0f766e)!important;
+  color:#fff!important;border:0!important
+}
+.clear-btn{
+  background:linear-gradient(135deg,#f8fafc,#e2e8f0)!important;
+  color:#334155!important
+}
+.metric-add{
+  background:linear-gradient(145deg,#f0fdf4,#eff6ff)!important
+}
+@media(max-width:520px){
+  .remarks-action-box{width:96vw}
+  .remarks-actions{grid-template-columns:1fr}
+}
+
+
+/* V29 action buttons */
+.action-buttons{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:7px!important;
+}
+.action-buttons button{
+  width:100%!important;
+  min-height:36px!important;
+  font-size:10px!important;
+}
+.remarks-confirm{
+  background:linear-gradient(135deg,#22c55e,#0877e8)!important;
+  color:#fff!important;
+  box-shadow:0 7px 16px rgba(8,119,232,.22)!important;
+}
+.remarks-confirm:disabled{
+  opacity:.65;
+  cursor:wait;
+}
+@media(max-width:620px){
+  .action-buttons{
+    grid-template-columns:1fr!important;
+  }
+}
+
+
+/* V31 detailed Call Done / Can't Connect popup */
+.mini-list-box{width:min(1080px,97vw)!important}
+.mini-list-wrap{max-height:62vh}
+.mini-status-actions{display:flex;gap:6px;flex-wrap:wrap}
+.mini-status-actions button{
+  border:0;border-radius:8px;padding:7px 9px;color:#fff;
+  font-size:10px;font-weight:900;cursor:pointer;
+  box-shadow:0 4px 10px rgba(20,45,75,.15)
+}
+.mini-status-actions .mini-call{background:linear-gradient(135deg,#34d399,#059669)}
+.mini-status-actions .mini-cant{background:linear-gradient(135deg,#fb7185,#dc2626)}
+.mini-status-actions .mini-edit{background:linear-gradient(135deg,#38bdf8,#2563eb)}
+.mini-status-actions .mini-close-action{background:linear-gradient(135deg,#a78bfa,#6d28d9)}
+.mini-remarks-cell{max-width:180px;white-space:normal;line-height:1.3}
+@media(max-width:800px){
+  .mini-list-box{width:98vw!important}
+  .mini-table{min-width:1060px}
+}
+
+
+/* V32 - Call Done / Can't Connect history popup */
+.mini-list-box{
+  width:min(1180px,96vw)!important;
+  max-height:92vh!important;
+  padding:24px 28px 26px!important;
+  overflow:auto!important;
+  border-radius:24px!important;
+}
+.mini-list-head{
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  margin-bottom:4px;
+}
+.mini-list-head h2{
+  font-size:28px!important;
+  font-weight:900!important;
+  color:#102744!important;
+  padding:0!important;
+  text-align:left!important;
+}
+.mini-close{
+  width:46px!important;
+  height:46px!important;
+  border-radius:12px!important;
+  font-size:23px!important;
+  background:linear-gradient(135deg,#ef4444,#dc2626)!important;
+  box-shadow:0 7px 18px rgba(220,38,38,.28)!important;
+}
+.mini-summary{
+  margin:2px 0 18px 84px!important;
+  padding:7px 14px!important;
+  min-width:0!important;
+  width:max-content!important;
+  border-radius:9px!important;
+  background:linear-gradient(135deg,#eef6ff,#f5f9ff)!important;
+  color:#075fb4!important;
+  font-size:14px!important;
+}
+.vehicle-history-cards{display:flex;flex-direction:column;gap:22px}
+.vehicle-history-card{
+  border:1px solid #dbe8f4;
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 9px 24px rgba(17,55,86,.08);
+  overflow:hidden;
+}
+.vehicle-history-top{
+  padding:18px 20px;
+  background:linear-gradient(135deg,#f8fbff,#eef8ff);
+  border-bottom:1px solid #dce9f4;
+}
+.vehicle-info-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:18px 24px;
+}
+.vehicle-info-item{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-width:0;
+}
+.vehicle-info-icon{
+  width:44px;height:44px;flex:0 0 44px;
+  display:grid;place-items:center;
+  border-radius:11px;
+  color:#fff;font-size:20px;
+  box-shadow:0 6px 14px rgba(15,60,100,.13);
+}
+.vi-blue{background:linear-gradient(135deg,#38bdf8,#2563eb)}
+.vi-purple{background:linear-gradient(135deg,#a78bfa,#7c3aed)}
+.vi-teal{background:linear-gradient(135deg,#22d3ee,#0891b2)}
+.vi-green{background:linear-gradient(135deg,#4ade80,#16a34a)}
+.vi-violet{background:linear-gradient(135deg,#a855f7,#7e22ce)}
+.vi-yellow{background:linear-gradient(135deg,#facc15,#f59e0b)}
+.vi-red{background:linear-gradient(135deg,#fb7185,#dc2626)}
+.vi-orange{background:linear-gradient(135deg,#fb923c,#f97316)}
+.vehicle-info-text{min-width:0}
+.vehicle-info-label{font-size:11px;color:#64748b;font-weight:800;margin-bottom:3px}
+.vehicle-info-value{font-size:15px;color:#102744;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vehicle-info-value.status-good{color:#15803d}
+.vehicle-info-value.status-bad{color:#dc2626}
+
+.history-section{padding:18px 20px 10px}
+.history-title{
+  display:flex;align-items:center;gap:8px;
+  color:#0b376b;font-weight:900;font-size:17px;
+  margin-bottom:14px
+}
+.history-timeline{position:relative;padding-left:30px}
+.history-timeline::before{
+  content:"";position:absolute;left:10px;top:4px;bottom:8px;
+  width:2px;background:#dbe7f2
+}
+.history-entry{
+  position:relative;
+  border:1px solid #dfe8f1;
+  border-radius:13px;
+  padding:12px 14px 12px 18px;
+  margin-bottom:10px;
+  background:#fff;
+  box-shadow:0 4px 11px rgba(17,55,86,.04)
+}
+.history-dot{
+  position:absolute;
+  width:14px;height:14px;border-radius:50%;
+  left:-28px;top:17px;
+  box-shadow:0 0 0 4px #fff
+}
+.dot-green{background:#22c55e}.dot-blue{background:#3b82f6}.dot-purple{background:#8b5cf6}.dot-orange{background:#f59e0b}
+.history-entry-top{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap
+}
+.history-meta{
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  font-size:12px;font-weight:900
+}
+.history-date{color:#075fb4}
+.history-status{color:#15803d}
+.history-sep{color:#b2bdc9}
+.history-phone{font-size:12px;color:#263d59;font-weight:800}
+.history-remark{font-size:13px;color:#334155;margin-top:7px;line-height:1.4}
+.history-empty{
+  padding:18px;text-align:center;color:#7a899b;
+  border:1px dashed #d8e2ec;border-radius:12px
+}
+
+.vehicle-history-actions{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+  padding:16px 20px 20px;
+  background:#f8fbff;
+  border-top:1px solid #e1eaf3
+}
+.vehicle-history-actions button{
+  min-height:52px;border:0;border-radius:11px;
+  color:#fff;font-size:15px;font-weight:900;cursor:pointer;
+  box-shadow:0 8px 18px rgba(20,45,75,.15);
+  transition:transform .16s ease,filter .16s ease
+}
+.vehicle-history-actions button:hover{transform:translateY(-2px);filter:brightness(1.04)}
+.history-call{background:linear-gradient(135deg,#4ade80,#16a34a)}
+.history-cant{background:linear-gradient(135deg,#fb923c,#f97316)}
+.history-close{background:linear-gradient(135deg,#fb7185,#dc2626)}
+.history-closed-label{
+  grid-column:1/-1;
+  text-align:center;padding:13px;border-radius:10px;
+  background:#eef2f7;color:#64748b;font-size:13px;font-weight:900
+}
+@media(max-width:900px){
+  .vehicle-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .mini-list-box{width:98vw!important;padding:16px 12px 18px!important;border-radius:16px!important}
+  .mini-list-head h2{font-size:21px!important}
+  .mini-summary{margin-left:0!important}
+  .vehicle-info-grid{grid-template-columns:1fr 1fr;gap:12px 8px}
+  .vehicle-info-icon{width:36px;height:36px;flex-basis:36px;font-size:16px}
+  .vehicle-info-value{font-size:12px}
+  .vehicle-info-label{font-size:9px}
+  .history-section{padding:14px 12px 7px}
+  .history-timeline{padding-left:25px}
+  .vehicle-history-actions{grid-template-columns:1fr;gap:8px;padding:12px}
+  .vehicle-history-actions button{min-height:46px;font-size:13px}
+}
+
+
+/* V35 - history arrow + right-side bold remarks */
+.history-entry-top{
+  display:grid!important;
+  grid-template-columns:minmax(170px,auto) 1fr!important;
+  align-items:center!important;
+  gap:18px!important;
+}
+.history-remark{
+  margin:0!important;
+  text-align:right!important;
+  font-size:14px!important;
+  font-weight:900!important;
+  color:#172f4f!important;
+  line-height:1.35!important;
+}
+.history-older-wrap{display:none}
+.history-older-wrap.show{display:block}
+.history-toggle{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  margin:6px 0 12px;
+  padding:9px 12px;
+  border:1px solid #cfe0ef;
+  border-radius:10px;
+  background:linear-gradient(135deg,#f8fbff,#edf6ff);
+  color:#075fb4;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+  transition:.16s ease;
+}
+.history-toggle:hover{
+  transform:translateY(-1px);
+  background:linear-gradient(135deg,#eef7ff,#dceeff);
+  box-shadow:0 5px 12px rgba(8,119,232,.10)
+}
+.history-toggle-arrow{
+  display:inline-block;
+  font-size:15px;
+  transition:transform .18s ease
+}
+.history-toggle.open .history-toggle-arrow{transform:rotate(180deg)}
+@media(max-width:620px){
+  .history-entry-top{
+    grid-template-columns:1fr!important;
+    gap:5px!important;
+  }
+  .history-remark{
+    text-align:left!important;
+    font-size:13px!important;
+  }
+}
+
+
+/* V36 Call History dashboard card */
+.dashboard-row-status{grid-template-columns:repeat(4,minmax(0,180px))!important}
+.metric-history{border-left:4px solid #7c3aed!important}
+.metric-history .metric-icon{
+  background:linear-gradient(135deg,#ede9fe,#ddd6fe)!important;
+  color:#6d28d9!important;
+  border-color:#c4b5fd!important
+}
+.metric-history .metric-number{color:#6d28d9!important}
+.history-type-done{color:#15803d!important}
+.history-type-cant{color:#dc2626!important}
+@media(max-width:620px){
+  .status-strip .dashboard-row-status{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
+
+
+/* V37 Call History first + actions enabled */
+.metric-history{
+  background:linear-gradient(145deg,#faf5ff,#f5f3ff)!important;
+  border-left:5px solid #7c3aed!important;
+  box-shadow:0 9px 24px rgba(124,58,237,.12)!important;
+}
+.metric-history:hover{
+  box-shadow:0 14px 30px rgba(124,58,237,.18)!important;
+}
+.call-history-card .vehicle-history-actions{
+  display:grid!important;
+  grid-template-columns:repeat(3,1fr)!important;
+}
+
+
+/* V39 - pure counting/history icons */
+.status-history-entry-card{
+  border:1px solid #dbe7f2;
+  border-radius:16px;
+  padding:15px 16px;
+  background:linear-gradient(145deg,#fff,#f9fcff);
+  box-shadow:0 6px 17px rgba(17,55,86,.07);
+}
+.status-history-entry-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px 18px;
+  align-items:center;
+}
+.status-history-item{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+}
+.status-history-icon{
+  width:36px;height:36px;flex:0 0 36px;
+  display:grid;place-items:center;
+  border-radius:10px;
+  color:#fff;
+}
+.shi-blue{background:linear-gradient(135deg,#38bdf8,#2563eb)}
+.shi-purple{background:linear-gradient(135deg,#a78bfa,#7c3aed)}
+.shi-teal{background:linear-gradient(135deg,#22d3ee,#0891b2)}
+.shi-green{background:linear-gradient(135deg,#4ade80,#16a34a)}
+.shi-yellow{background:linear-gradient(135deg,#facc15,#f59e0b)}
+.shi-red{background:linear-gradient(135deg,#fb7185,#dc2626)}
+.shi-orange{background:linear-gradient(135deg,#fb923c,#f97316)}
+.status-history-item small,.status-history-remark small{
+  display:block;
+  color:#718096;
+  font-size:9px;
+  font-weight:850;
+  text-transform:uppercase;
+}
+.status-history-item strong{
+  display:block;
+  margin-top:2px;
+  color:#102744;
+  font-size:12px;
+  font-weight:900;
+}
+.status-history-remark{
+  grid-column:1/-1;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#f4f8fc;
+  border-left:4px solid #0877e8;
+}
+.status-history-remark strong{
+  display:block;
+  margin-top:3px;
+  color:#102744;
+  font-size:13px;
+  font-weight:900;
+}
+.history-type-closed{color:#64748b!important}
+@media(max-width:800px){
+  .status-history-entry-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:480px){
+  .status-history-entry-grid{grid-template-columns:1fr}
+}
+
+
+/* V44 clearer third-row counters */
+.status-strip{padding:14px 18px!important}
+.status-strip .dashboard-row-status{
+  grid-template-columns:repeat(4,minmax(180px,1fr))!important;
+  max-width:980px;
+  margin:0 auto!important;
+  gap:14px!important;
+}
+.status-strip .metric-small{
+  min-height:90px!important;
+  padding:14px 16px!important;
+  gap:12px!important;
+  justify-content:flex-start!important;
+}
+.status-strip .metric-small .metric-icon{
+  width:48px!important;height:48px!important;flex-basis:48px!important;
+  font-size:21px!important
+}
+.status-strip .metric-small .metric-number{
+  display:block!important;
+  font-size:28px!important;
+  line-height:1!important;
+  margin-bottom:6px!important
+}
+.status-strip .metric-small .metric-label{
+  display:block!important;
+  font-size:14px!important;
+  line-height:1.15!important;
+  font-weight:900!important;
+  color:#203a59!important;
+  white-space:nowrap!important
+}
+.metric-history .metric-label{color:#6d28d9!important}
+.metric-done .metric-label{color:#15803d!important}
+.metric-cant .metric-label{color:#b91c1c!important}
+.metric-closed .metric-label{color:#475569!important}
+
+@media(max-width:900px){
+  .status-strip .dashboard-row-status{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:520px){
+  .status-strip .dashboard-row-status{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  .status-strip .metric-small{
+    min-height:80px!important;padding:10px!important;
+    flex-direction:row!important;text-align:left!important
+  }
+  .status-strip .metric-small .metric-icon{
+    width:38px!important;height:38px!important;flex-basis:38px!important;font-size:17px!important
+  }
+  .status-strip .metric-small .metric-number{font-size:22px!important;margin-bottom:4px!important}
+  .status-strip .metric-small .metric-label{font-size:11px!important;white-space:normal!important}
+}
+
+
+/* V45 Pending popup action buttons */
+.call-history-card .vehicle-history-actions{
+  display:grid!important;
+  grid-template-columns:repeat(3,1fr)!important;
+  gap:14px!important;
+  padding:16px 20px 20px!important;
+}
+.call-history-card .vehicle-history-actions button{
+  min-height:50px!important;
+  font-size:14px!important;
+  font-weight:900!important;
+}
+@media(max-width:620px){
+  .call-history-card .vehicle-history-actions{
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+    padding:12px!important;
+  }
+  .call-history-card .vehicle-history-actions button{
+    min-height:46px!important;
+    font-size:13px!important;
+  }
+}
+
 </style>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="locked">
 
@@ -597,7 +1444,7 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
 
       <label class="vehicle-field">
         <span>Fuel Type</span>
-        <div class="field-shell"><span class="field-icon">⛽</span><select id="newFuel"><option value="petrol">Petrol</option><option value="diesel">Diesel</option><option value="cng">CNG</option><option value="electric">Electric</option><option value="other">Other</option></select></div>
+        <div class="field-shell"><span class="field-icon">⛽</span><select id="newFuel"><option value="petrol">Petrol</option><option value="diesel">Diesel</option><option value="cng">CNG</option><option value="other">Other</option></select></div>
       </label>
 
       <label class="vehicle-field">
@@ -611,6 +1458,27 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
       </label>
     </div>
 
+
+    <div id="existingVehiclePanel" class="existing-vehicle-panel" style="display:none">
+      <div class="existing-vehicle-head">
+        <div class="existing-found-icon">⚠️</div>
+        <div>
+          <strong>Existing Vehicle Found</strong>
+          <small>This registration number is already available in the current Google Sheet data.</small>
+        </div>
+      </div>
+      <div class="existing-vehicle-details">
+        <div><span>Registration</span><strong id="existingVehicleNumber">—</strong></div>
+        <div><span>Phone</span><strong id="existingVehiclePhone">—</strong></div>
+        <div><span>Vehicle</span><strong id="existingVehicleName">—</strong></div>
+        <div><span>Expiry</span><strong id="existingVehicleExpiry">—</strong></div>
+        <div><span>Status</span><strong id="existingVehicleStatus">—</strong></div>
+      </div>
+      <button id="editExistingVehicleBtn" class="edit-existing-btn edit-existing-full" type="button">
+        ✏️ Edit / Update Vehicle Details
+      </button>
+    </div>
+
     <div class="vehicle-validity-preview">
       <div class="preview-icon">🛡️</div>
       <div>
@@ -622,6 +1490,64 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
     <div class="vehicle-form-actions">
       <button class="vehicle-cancel" id="cancelAdd" type="button">Cancel</button>
       <button class="vehicle-save" id="saveAdd" type="button"><span>＋</span> Save Vehicle</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="successMiniModal" class="modal">
+  <div class="modal-box success-mini-box">
+    <div class="success-mini-icon">✓</div>
+    <h3 id="successMiniTitle">Saved Successfully</h3>
+    <p id="successMiniText">Vehicle details have been updated successfully.</p>
+    <button id="successMiniOk" class="success-mini-ok" type="button">OK</button>
+  </div>
+</div>
+
+<div id="editVehicleModal" class="modal">
+  <div class="modal-box vehicle-add-box">
+    <div class="vehicle-add-head">
+      <div class="vehicle-add-icon">✏️</div>
+      <div><h2>Edit Vehicle Details</h2><p>Correct existing vehicle information without creating a new record.</p></div>
+      <button id="closeEditVehicle" class="vehicle-add-close" type="button">✕</button>
+    </div>
+    <div class="vehicle-form-grid">
+      <label class="vehicle-field"><span>Vehicle Number</span><div class="field-shell"><span class="field-icon">🔖</span><input id="editVehicleNumber" maxlength="15"></div></label>
+      <label class="vehicle-field"><span>Mobile Number</span><div class="field-shell"><span class="field-icon">📱</span><input id="editMobile" maxlength="10" inputmode="numeric"></div></label>
+      <label class="vehicle-field"><span>Vehicle Name</span><div class="field-shell"><span class="field-icon">🚗</span><input id="editVehicleName"></div></label>
+      <label class="vehicle-field"><span>Fuel Type</span><div class="field-shell"><span class="field-icon">⛽</span><select id="editFuel"><option value="petrol">Petrol</option><option value="diesel">Diesel</option><option value="cng">CNG</option><option value="other">Other</option></select></div></label>
+      <label class="vehicle-field"><span>Pollution Validity</span><div class="field-shell"><span class="field-icon">📅</span><select id="editValidity"><option value="keep">Keep Current Expiry</option><option value="6 month">6 Months From Today</option><option value="1 year">1 Year From Today</option></select></div></label>
+      <label class="vehicle-field vehicle-field-full"><span>Current / New Expiry</span><div class="field-shell"><span class="field-icon">🛡️</span><input id="editExpiryPreview" readonly></div></label>
+      <label class="vehicle-field vehicle-field-full"><span>Remarks</span><div class="field-shell"><span class="field-icon">📝</span><input id="editRemarks"></div></label>
+    </div>
+    <div id="editVehicleMessage" style="min-height:18px;text-align:center;font-size:12px;font-weight:800;color:#dc2626"></div>
+    <div class="vehicle-form-actions">
+      <button id="cancelEditVehicle" class="vehicle-cancel" type="button">Cancel</button>
+      <button id="saveEditVehicle" class="vehicle-save" type="button">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="remarksActionModal" class="modal">
+  <div class="modal-box remarks-action-box">
+    <div class="remarks-head">
+      <div class="remarks-icon">📝</div>
+      <div>
+        <h2 id="remarksActionTitle">Add Remarks</h2>
+        <p id="remarksActionHelp">Enter remarks for this action.</p>
+      </div>
+      <button id="closeRemarksAction" class="remarks-close" type="button">✕</button>
+    </div>
+
+    <label class="remarks-field">
+      <span>Remarks</span>
+      <textarea id="remarksActionText" rows="4" placeholder="Enter remarks (optional)"></textarea>
+    </label>
+
+    <div class="remarks-actions">
+      <button id="cancelRemarksAction" class="remarks-cancel" type="button">Cancel</button>
+      <button id="confirmRemarksAction" class="remarks-confirm" type="button">Save</button>
     </div>
   </div>
 </div>
@@ -666,10 +1592,7 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
   <div class="modal-box mini-list-box">
     <div class="mini-list-head"><h2 id="miniVehicleTitle">Vehicle Details</h2><button id="closeMiniVehicle" class="mini-close" type="button">✕</button></div>
     <div id="miniVehicleSummary" class="mini-summary"></div>
-    <div class="mini-list-wrap"><table class="mini-table">
-      <thead><tr><th>Registration</th><th>Phone</th><th>Vehicle</th><th>Expiry</th><th>Days</th><th>Status</th></tr></thead>
-      <tbody id="miniVehicleBody"></tbody>
-    </table></div>
+    <div id="miniVehicleCards" class="vehicle-history-cards"></div>
   </div>
 </div>
 
@@ -708,32 +1631,28 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
     </header>
 
     <main class="workspace">
-      <div class="add-row"><button id="addVehicleBtn" class="add-vehicle-main" type="button"><span>＋</span>Add Vehicle Details</button></div>
-
-      <section class="metric-grid">
+      <section class="dashboard-row dashboard-row-primary">
         <button class="metric-card metric-total" type="button">
           <span class="metric-icon">🚗</span><span><span class="metric-number" id="totalVehicles">0</span><span class="metric-label">Total Vehicles</span></span>
         </button>
-        <button class="metric-card metric-done status-filter" type="button" data-filter="callDone">
-          <span class="metric-icon">📞</span><span><span class="metric-number" id="callDone">0</span><span class="metric-label">Call Done</span></span>
-        </button>
-        <button class="metric-card metric-cant status-filter" type="button" data-filter="cantConnect">
-          <span class="metric-icon">📵</span><span><span class="metric-number" id="cantConnect">0</span><span class="metric-label">Can't Connect</span></span>
-        </button>
-        <button class="metric-card metric-closed status-filter" type="button" data-filter="closed">
-          <span class="metric-icon">🔒</span><span><span class="metric-number" id="closedVehicles">0</span><span class="metric-label">Closed</span></span>
-        </button>
-        <button class="metric-card metric-urgent status-filter" type="button" data-filter="urgent">
-          <span class="metric-icon">◷</span><span><span class="metric-number" id="urgentVehicles">0</span><span class="metric-label">Expiring Soon<br>(0–3 Days)</span></span>
-        </button>
-        <button class="metric-card metric-expired status-filter" type="button" data-filter="expired">
-          <span class="metric-icon">⚠</span><span><span class="metric-number" id="expiredVehicles">0</span><span class="metric-label">Expired</span></span>
+        <button id="addVehicleBtn" class="metric-card metric-add" type="button">
+          <span class="metric-icon">＋</span><span><span class="metric-number add-word">ADD</span><span class="metric-label">Add Vehicle Details</span></span>
         </button>
       </section>
 
-      <!-- Hidden counters retained for mini-screen filters -->
-      <span id="expiredFiveDays" hidden>0</span>
-      <span id="expiredOlderThanFive" hidden>0</span>
+      <section class="dashboard-row dashboard-row-expiry">
+        <button class="metric-card metric-urgent status-filter" type="button" data-filter="urgent">
+          <span class="metric-icon">🚨</span><span><span class="metric-number" id="urgentVehicles">0</span><span class="metric-label">Urgent<br>(0–3 Days)</span></span>
+        </button>
+        <button class="metric-card metric-expired-five status-filter" type="button" data-filter="expired5">
+          <span class="metric-icon">🕔</span><span><span class="metric-number" id="expiredFiveDays">0</span><span class="metric-label">Expired<br>1–5 Days Ago</span></span>
+        </button>
+        <button class="metric-card metric-expired-old status-filter" type="button" data-filter="expiredOlder">
+          <span class="metric-icon">📋</span><span><span class="metric-number" id="expiredOlderThanFive">0</span><span class="metric-label">Expired More Than<br>5 Days Ago</span></span>
+        </button>
+      </section>
+      <!-- Total expired counter retained for existing JavaScript compatibility -->
+      <span id="expiredVehicles" hidden>0</span>
 
       <section class="filter-panel">
         <div class="filter-row">
@@ -746,9 +1665,26 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
           <button type="button" id="upcomingView" class="view-btn active">🔔 &nbsp; Expired &amp; Soon Expiring</button>
           <button type="button" id="vehicleRecordsView" class="view-btn">▣ &nbsp; Vehicle Records</button>
           <button type="button" id="refreshData" class="refresh-btn">▤ &nbsp; Refresh Google Sheet</button>
-          <button type="button" id="pdfButton" class="pdf-btn" style="display:none">📄 Save All Data as PDF</button>
+          <button type="button" id="pdfButton" class="excel-btn" style="display:none">📊 Save All Data as Excel (.xlsx)</button>
         </div>
       </section>
+
+      <div class="status-strip">
+        <section class="dashboard-row dashboard-row-status">
+<button class="metric-card metric-small metric-history status-filter" type="button" data-filter="callHistory">
+          <span class="metric-icon">🕘</span><span><span class="metric-number" id="callHistoryCount">0</span><span class="metric-label">Pending...</span></span>
+        </button>
+        <button class="metric-card metric-small metric-done status-filter" type="button" data-filter="callDone">
+          <span class="metric-icon">📞</span><span><span class="metric-number" id="callDone">0</span><span class="metric-label">Call Done</span></span>
+        </button>
+        <button class="metric-card metric-small metric-cant status-filter" type="button" data-filter="cantConnect">
+          <span class="metric-icon">📵</span><span><span class="metric-number" id="cantConnect">0</span><span class="metric-label">Can't Connect</span></span>
+        </button>
+        <button class="metric-card metric-small metric-closed status-filter" type="button" data-filter="closed">
+          <span class="metric-icon">🔒</span><span><span class="metric-number" id="closedVehicles">0</span><span class="metric-label">Closed</span></span>
+        </button>
+      </section>
+      </div>
 
       <div id="message"></div>
       <section class="table-card">
@@ -771,6 +1707,6 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
 
 </div>
 
-<script src="script.js?v=mobile-fixed-15"></script>
+<script src="script.js?v=pending-actions-v45"></script>
 </body>
 </html>

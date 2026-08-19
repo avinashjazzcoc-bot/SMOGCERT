@@ -1,12 +1,14 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbyEzpHlOxi_ovC7WNvu08U_pT4Q0ryU5zM6lPxTdGbeHtXzEJK0zJikqbyuyrQenadvXQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxu5MRXvTyZv1ZkI4hvUEuy-whUB98Ym675FahXTdKG4vx3C2rhRXLJzme1_EQWrhy76g/exec";
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/1S8a5kqVttJa7TSijjkEUzmL-F7rc039LHltu7rCi5j0/edit?gid=1544491919#gid=1544491919";
 const SESSION_KEY = "smogcert_token";
 
 let sessionToken = sessionStorage.getItem(SESSION_KEY) || "";
 let vehicleData = [];
+let actionHistory = [];
 let currentView = "upcoming";
 let currentFilter = "";
 let currentPage = 1;
+let existingVehicleMatch = null;
 const PAGE_SIZE = 5;
 
 const $ = id => document.getElementById(id);
@@ -43,22 +45,63 @@ function logout() {
 async function apiPost(action, data = {}) {
   const params = new URLSearchParams();
   params.set("action", action);
-  if (action !== "login") params.set("token", sessionToken);
-  Object.entries(data).forEach(([k,v]) => params.set(k, v == null ? "" : String(v)));
 
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
-    body: params.toString(),
-    cache: "no-store"
+  if (action !== "login") {
+    params.set("token", sessionToken);
+  }
+
+  Object.entries(data).forEach(([k, v]) => {
+    params.set(k, v == null ? "" : String(v));
   });
 
-  const result = await response.json();
+  let response;
+
+  try {
+    response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+      },
+      body: params.toString(),
+      cache: "no-store",
+      redirect: "follow"
+    });
+  } catch (error) {
+    throw new Error(
+      "Unable to connect to the SMOGCERT server. Check the Google Apps Script deployment."
+    );
+  }
+
+  const raw = await response.text();
+  const trimmed = String(raw || "").trim();
+
+  // Google returns an HTML page when the Web App deployment is not public,
+  // is using an old/invalid deployment URL, or requires Google sign-in.
+  if (
+    trimmed.startsWith("<!DOCTYPE") ||
+    trimmed.startsWith("<html") ||
+    trimmed.startsWith("<HTML")
+  ) {
+    throw new Error(
+      "Google Apps Script Web App is not publicly accessible. Redeploy it with 'Who has access: Anyone' and use the active /exec URL."
+    );
+  }
+
+  let result;
+
+  try {
+    result = JSON.parse(trimmed);
+  } catch (error) {
+    throw new Error(
+      "The SMOGCERT server returned an invalid response. Redeploy the Google Apps Script Web App and try again."
+    );
+  }
 
   if (result.code === "AUTH_REQUIRED") {
     logout();
     throw new Error("Session expired. Please log in again.");
   }
+
   return result;
 }
 
@@ -100,6 +143,7 @@ async function loadVehicles() {
     const result = await apiPost("getVehicles");
     if (!result.success) throw new Error(result.message || "Unable to load data.");
     vehicleData = Array.isArray(result.vehicles) ? result.vehicles : [];
+    actionHistory = Array.isArray(result.history) ? result.history : [];
     updateDashboard();
     renderVehicles();
   } catch (e) {
@@ -177,17 +221,39 @@ function formatExpiryForVehicle(vehicle) {
 }
 
 function updateDashboard() {
-  let active = 0, urgent = 0, expired = 0, expiredFiveDays = 0;
-  let expiredOlderThanFive = 0, done = 0, cant = 0, closed = 0;
+  let urgent = 0;
+  let expired = 0;
+  let expiredFiveDays = 0;
+  let expiredOlderThanFive = 0;
+
+  // Latest row per registration number.
+  const latestByReg = new Map();
 
   vehicleData.forEach(v => {
-    const status = String(v.status || "Pending").trim();
-    const lower = status.toLowerCase();
+    const reg = normalizeReg(v.vehicleNumber);
+    if (!reg) return;
 
-    if (lower !== "closed") active++;
-    if (status === "Call Done") done++;
-    if (status === "Can't Connect") cant++;
-    if (lower === "closed") closed++;
+    const current = latestByReg.get(reg);
+    const vd = parseDate(v.timestamp) || new Date(0);
+    const cd = current ? (parseDate(current.timestamp) || new Date(0)) : new Date(0);
+
+    if (!current || vd >= cd) {
+      latestByReg.set(reg, v);
+    }
+  });
+
+  const latestVehicles = Array.from(latestByReg.values());
+
+  // Active vehicle registration numbers.
+  const activeRegs = new Set();
+
+  latestVehicles.forEach(v => {
+    const reg = normalizeReg(v.vehicleNumber);
+    const lower = String(v.status || "Pending").trim().toLowerCase();
+
+    if (lower !== "closed" && reg) {
+      activeRegs.add(reg);
+    }
 
     if (lower === "closed") return;
 
@@ -196,21 +262,114 @@ function updateDashboard() {
 
     if (days < 0) {
       expired++;
-      if (days >= -5) expiredFiveDays++;
-      else expiredOlderThanFive++;
+
+      if (days >= -5) {
+        expiredFiveDays++;
+      } else {
+        expiredOlderThanFive++;
+      }
     } else if (days <= 3) {
       urgent++;
     }
   });
 
-  if ($("totalVehicles")) $("totalVehicles").textContent = vehicleData.length;
-  $("urgentVehicles").textContent = urgent;
-  $("expiredVehicles").textContent = expired;
-  $("expiredFiveDays").textContent = expiredFiveDays;
-  $("expiredOlderThanFive").textContent = expiredOlderThanFive;
-  $("callDone").textContent = done;
-  $("cantConnect").textContent = cant;
-  $("closedVehicles").textContent = closed;
+  // History counters count every matching history action.
+  let callDoneCount = 0;
+  let cantConnectCount = 0;
+  let closedCount = 0;
+
+  actionHistory.forEach(h => {
+    const status = String(h.status || "").trim();
+
+    if (status === "Call Done") callDoneCount++;
+    if (status === "Can't Connect") cantConnectCount++;
+    if (status === "Closed") closedCount++;
+  });
+
+  // Include legacy Sheet1 actions if they do not already exist in ActionHistory.
+  const historyKeys = new Set(
+    actionHistory.map(h => [
+      normalizeReg(h.vehicleNumber),
+      String(h.status || "").trim(),
+      String(h.actionDate || h.timestamp || ""),
+      String(h.remarks || "").trim()
+    ].join("|"))
+  );
+
+  vehicleData.forEach(v => {
+    const status = String(v.status || "").trim();
+
+    if (
+      status !== "Call Done" &&
+      status !== "Can't Connect" &&
+      status !== "Closed"
+    ) {
+      return;
+    }
+
+    const key = [
+      normalizeReg(v.vehicleNumber),
+      status,
+      String(v.callDate || v.timestamp || ""),
+      String(v.remarks || "").trim()
+    ].join("|");
+
+    if (historyKeys.has(key)) return;
+
+    if (status === "Call Done") callDoneCount++;
+    if (status === "Can't Connect") cantConnectCount++;
+    if (status === "Closed") closedCount++;
+  });
+
+  // Pending count = UNIQUE ACTIVE vehicles that have either
+  // Call Done or Can't Connect history. Closed vehicles are excluded.
+  const callHistoryVehicleRegs = new Set();
+
+  actionHistory.forEach(h => {
+    const status = String(h.status || "").trim();
+    const reg = normalizeReg(h.vehicleNumber);
+
+    if (
+      reg &&
+      activeRegs.has(reg) &&
+      (status === "Call Done" || status === "Can't Connect")
+    ) {
+      callHistoryVehicleRegs.add(reg);
+    }
+  });
+
+  vehicleData.forEach(v => {
+    const status = String(v.status || "").trim();
+    const reg = normalizeReg(v.vehicleNumber);
+
+    if (
+      reg &&
+      activeRegs.has(reg) &&
+      (status === "Call Done" || status === "Can't Connect")
+    ) {
+      callHistoryVehicleRegs.add(reg);
+    }
+  });
+
+  if ($("totalVehicles")) $("totalVehicles").textContent = latestVehicles.length;
+  if ($("urgentVehicles")) $("urgentVehicles").textContent = urgent;
+  if ($("expiredVehicles")) $("expiredVehicles").textContent = expired;
+  if ($("expiredFiveDays")) $("expiredFiveDays").textContent = expiredFiveDays;
+  if ($("expiredOlderThanFive")) $("expiredOlderThanFive").textContent = expiredOlderThanFive;
+
+  if ($("callDone")) $("callDone").textContent = callDoneCount;
+  if ($("cantConnect")) $("cantConnect").textContent = cantConnectCount;
+  if ($("closedVehicles")) $("closedVehicles").textContent = closedCount;
+  if ($("callHistoryCount")) $("callHistoryCount").textContent = callHistoryVehicleRegs.size;
+
+  // Pending count exactly matches the unique vehicles shown in Pending popup.
+  const pendingRegs = new Set();
+  getVehiclesForFilter("callHistory").forEach(v => {
+    const reg = normalizeReg(v.vehicleNumber);
+    if (reg) pendingRegs.add(reg);
+  });
+  if ($("callHistoryCount")) $("callHistoryCount").textContent = pendingRegs.size;
+
 }
 
 function renderVehicles() {
@@ -258,11 +417,32 @@ function renderVehicles() {
   } else if (!search && expiryFilter === "all" && recordFilter === "all" && currentView === "upcoming") {
     list = list.filter(v => {
       const lower = String(v.status || "").trim().toLowerCase();
+
+      // Closed vehicles never appear in live reminder lists.
       if (lower === "closed") return false;
+
       const d = daysLeftForVehicle(v);
+
+      // Show all expired vehicles and vehicles expiring within 10 days.
       return d !== null && d <= 10;
     });
-    list.sort((a,b) => (daysLeftForVehicle(b) ?? -999999) - (daysLeftForVehicle(a) ?? -999999));
+
+    // Urgent / soon-expiring first, then recently expired, then older expired.
+    list.sort((a,b) => {
+      const da = daysLeftForVehicle(a);
+      const db = daysLeftForVehicle(b);
+
+      if (da === null && db === null) return 0;
+      if (da === null) return 1;
+      if (db === null) return -1;
+
+      // Positive days first (closest expiry first), then expired by most recent.
+      if (da >= 0 && db >= 0) return da - db;
+      if (da >= 0 && db < 0) return -1;
+      if (da < 0 && db >= 0) return 1;
+
+      return db - da;
+    });
   } else {
     list.sort((a,b) => {
       const da = parseDate(a.timestamp) || new Date(0);
@@ -303,12 +483,13 @@ function renderVehicles() {
       <td data-label="Days Left" class="${daysCls}">${dayText}</td>
       <td data-label="Expiry Status"><span class="record-expiry ${cls}">${label}</span></td>
       <td data-label="Record Status">${escapeHtml(v.status || "Pending")}</td>
-      <td data-label="Actions"><div class="action-buttons">
-        <button class="callDone" onclick="markStatus('callDone',${Number(v.rowNumber)})">Call Done</button>
-        <button class="cantConnect" onclick="markStatus('cantConnect',${Number(v.rowNumber)})">Can't Connect</button>
-        <button class="renew" onclick="renewVehicle(${Number(v.rowNumber)})">Renew</button>
-        <button class="closeCase" onclick="markStatus('close',${Number(v.rowNumber)})">Close</button>
-      </div></td>
+      <td data-label="Actions">${String(v.status || "").trim().toLowerCase() === "closed"
+        ? '<span class="closed-no-actions">🔒 Closed — No Actions</span>'
+        : `<div class="action-buttons">
+            <button class="callDone" onclick="markStatus('callDone',${Number(v.rowNumber)})">Call Done</button>
+            <button class="cantConnect" onclick="markStatus('cantConnect',${Number(v.rowNumber)})">Can't Connect</button>
+            <button class="closeCase" onclick="markStatus('close',${Number(v.rowNumber)})">Close</button>
+          </div>`}</td>
     </tr>`;
   }).join("");
 
@@ -374,14 +555,103 @@ function updatePagination(totalItems, totalPages, from, to) {
   add("›", currentPage + 1, currentPage >= totalPages);
 }
 
-async function markStatus(action,rowNumber) {
-  const remarks = prompt("Remarks (optional):", "");
-  if (remarks === null) return;
+let pendingRemarksAction = null;
+
+function openRemarksAction(action, rowNumber) {
+  const titles = {
+    callDone: "📞 Call Done",
+    cantConnect: "📵 Can't Connect",
+    close: "🔒 Close Vehicle"
+  };
+
+  const helps = {
+    callDone: "Add an optional remark before marking this call as done.",
+    cantConnect: "Add an optional remark about the failed connection attempt.",
+    close: "Add an optional closing remark. Closed vehicles will have no further actions."
+  };
+
+  pendingRemarksAction = { action, rowNumber };
+  $("remarksActionTitle").textContent = titles[action] || "📝 Add Remarks";
+  $("remarksActionHelp").textContent = helps[action] || "Enter remarks for this action.";
+  $("remarksActionText").value = "";
+  $("confirmRemarksAction").textContent =
+    action === "close" ? "🔒 Close Vehicle" : "💾 Save";
+  $("remarksActionModal").classList.add("show");
+  setTimeout(() => $("remarksActionText").focus(), 60);
+}
+
+async function confirmRemarksAction() {
+  if (!pendingRemarksAction) {
+    return;
+  }
+
+  const action = pendingRemarksAction.action;
+  const rowNumber = Number(pendingRemarksAction.rowNumber);
+  const remarks = $("remarksActionText").value.trim();
+
+  if (!rowNumber) {
+    showSuccessMini("Invalid vehicle row.");
+    return;
+  }
+
+  const button = $("confirmRemarksAction");
+  const previousText = button.textContent;
+
+  button.disabled = true;
+  button.textContent = "Saving...";
+
   try {
-    const result = await apiPost(action, {rowNumber, remarks});
-    alert(result.message || "Saved.");
-    if (result.success) await loadVehicles();
-  } catch(e) { alert(e.message); }
+    const result = await apiPost(action, {
+      rowNumber: rowNumber,
+      remarks: remarks
+    });
+
+    if (!result || !result.success) {
+      throw new Error(
+        result && result.message
+          ? result.message
+          : "Could not save action."
+      );
+    }
+
+    const originFilter = $("remarksActionModal").dataset.originFilter || "";
+    const reopenFilter =
+      originFilter === "callHistory"
+        ? "callHistory"
+        : action === "callDone" ? "callDone" :
+          action === "cantConnect" ? "cantConnect" :
+          action === "close" ? "closed" : "";
+
+    $("remarksActionModal").classList.remove("show");
+    pendingRemarksAction = null;
+
+    await loadVehicles();
+
+    showSuccessMini(
+      result.message || "Action saved successfully."
+    );
+
+    if (reopenFilter) {
+      $("successMiniModal").dataset.reopenFilter = reopenFilter;
+    }
+
+  } catch (e) {
+    const message =
+      e && e.message
+        ? e.message
+        : "Could not save action.";
+
+    // Keep the remarks window open so the user can retry.
+    alert(message);
+
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
+  }
+}
+
+async function markStatus(action, rowNumber) {
+  openRemarksAction(action, rowNumber);
 }
 
 async function renewVehicle(rowNumber) {
@@ -406,6 +676,157 @@ async function verifyRecordsPassword() {
   } catch(e) { alert(e.message); return false; }
 }
 
+
+function normalizeVehicleNumber(value) {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function findExistingVehicle(vehicleNumber) {
+  const wanted = normalizeVehicleNumber(vehicleNumber);
+  if (!wanted) return null;
+
+  const matches = vehicleData.filter(v =>
+    normalizeVehicleNumber(v.vehicleNumber) === wanted
+  );
+
+  if (!matches.length) return null;
+
+  matches.sort((a,b) => {
+    const da = parseDate(a.timestamp) || new Date(0);
+    const db = parseDate(b.timestamp) || new Date(0);
+    return db - da;
+  });
+
+  return matches[0];
+}
+
+function checkExistingVehicleNumber() {
+  const input = $("newVehicleNumber");
+  if (!input) return;
+
+  const value = normalizeVehicleNumber(input.value);
+  input.value = value;
+  existingVehicleMatch = findExistingVehicle(value);
+
+  const panel = $("existingVehiclePanel");
+  const saveBtn = $("saveAdd");
+
+  if (!existingVehicleMatch) {
+    panel.style.display = "none";
+    saveBtn.disabled = false;
+    return;
+  }
+
+  $("existingVehicleNumber").textContent =
+    existingVehicleMatch.vehicleNumber || "—";
+  $("existingVehiclePhone").textContent =
+    existingVehicleMatch.mobileNumber || "—";
+  $("existingVehicleName").textContent =
+    existingVehicleMatch.vehicleName || "—";
+  $("existingVehicleExpiry").textContent =
+    formatExpiryForVehicle(existingVehicleMatch);
+  $("existingVehicleStatus").textContent =
+    existingVehicleMatch.status || "Pending";
+
+  panel.style.display = "block";
+  saveBtn.disabled = true;
+
+  // Keep the Edit / Update action clearly visible inside the Add Vehicle popup.
+  setTimeout(() => {
+    const editButton = $("editExistingVehicleBtn");
+    if (editButton) {
+      editButton.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest"
+      });
+    }
+  }, 80);
+}
+
+
+function openExistingVehicleEdit() {
+  if (!existingVehicleMatch) return;
+  $("addVehicleModal").classList.remove("show");
+
+  $("editVehicleNumber").value = existingVehicleMatch.vehicleNumber || "";
+  $("editMobile").value = existingVehicleMatch.mobileNumber || "";
+  $("editVehicleName").value = existingVehicleMatch.vehicleName || "";
+  $("editFuel").value = String(existingVehicleMatch.fuelType || "other").toLowerCase();
+  if (!$("editFuel").value) $("editFuel").value = "other";
+  $("editRemarks").value = existingVehicleMatch.remarks || "";
+  $("editValidity").value = "keep";
+  $("editVehicleMessage").textContent = "";
+  $("editVehicleModal").dataset.rowNumber = existingVehicleMatch.rowNumber;
+  updateEditExpiryPreview();
+  $("saveEditVehicle").style.visibility = "visible";
+  $("saveEditVehicle").style.display = "";
+  $("editVehicleModal").classList.add("show");
+}
+
+function updateEditExpiryPreview() {
+  const validity = $("editValidity").value;
+
+  if (validity === "keep") {
+    $("editExpiryPreview").value = existingVehicleMatch
+      ? formatExpiryForVehicle(existingVehicleMatch)
+      : "Current expiry";
+    return;
+  }
+
+  const d = new Date();
+  if (validity === "6 month") d.setMonth(d.getMonth() + 6);
+  else if (validity === "1 year") d.setFullYear(d.getFullYear() + 1);
+
+  $("editExpiryPreview").value =
+    String(d.getDate()).padStart(2,"0") + "-" +
+    String(d.getMonth()+1).padStart(2,"0") + "-" +
+    d.getFullYear();
+}
+
+function showSuccessMini(message, title = "Saved Successfully") {
+  $("successMiniTitle").textContent = title;
+  $("successMiniText").textContent = message || "Vehicle details have been updated successfully.";
+  $("successMiniModal").classList.add("show");
+}
+
+async function saveExistingVehicleEdit() {
+  const rowNumber = Number($("editVehicleModal").dataset.rowNumber);
+  const vehicleNumber = normalizeVehicleNumber($("editVehicleNumber").value);
+  const mobileNumber = $("editMobile").value.trim();
+  const vehicleName = $("editVehicleName").value.trim();
+  const fuelType = $("editFuel").value;
+  const validity = $("editValidity").value;
+  const remarks = $("editRemarks").value.trim();
+  const msg = $("editVehicleMessage");
+
+  msg.textContent = "";
+  if (!rowNumber) return;
+  if (!vehicleNumber) { msg.textContent="Vehicle number is required."; return; }
+  if (!/^\d{10}$/.test(mobileNumber)) { msg.textContent="Mobile number must be exactly 10 digits."; return; }
+  if (!vehicleName) { msg.textContent="Vehicle name is required."; return; }
+
+  $("saveEditVehicle").disabled = true;
+  $("saveEditVehicle").textContent = "Saving...";
+  try {
+    const result = await apiPost("editVehicle", {
+      rowNumber, vehicleNumber, mobileNumber, vehicleName, fuelType, validity, remarks
+    });
+    if (!result.success) throw new Error(result.message || "Could not edit vehicle.");
+    await loadVehicles();
+    $("editVehicleModal").classList.remove("show");
+    showSuccessMini(result.message || "Vehicle details have been updated successfully.");
+  } catch(e) {
+    msg.textContent = e.message;
+  } finally {
+    $("saveEditVehicle").disabled = false;
+    $("saveEditVehicle").textContent = "💾 Save Changes";
+    $("saveEditVehicle").style.visibility = "visible";
+    $("saveEditVehicle").style.display = "";
+  }
+}
+
 function updateAddVehicleExpiryPreview() {
   const validity = $("newValidity").value;
   const d = new Date();
@@ -423,6 +844,13 @@ function updateAddVehicleExpiryPreview() {
 }
 
 async function saveNewVehicle() {
+  checkExistingVehicleNumber();
+
+  if (existingVehicleMatch) {
+    alert("This vehicle number already exists. Use Update / Renew Existing Vehicle.");
+    return;
+  }
+
   const vehicleNumber = $("newVehicleNumber").value.trim().toUpperCase();
   const mobileNumber = $("newMobile").value.trim();
   const vehicleName = $("newVehicleName").value.trim();
@@ -439,6 +867,9 @@ async function saveNewVehicle() {
     if (!result.success) throw new Error(result.message || "Could not add vehicle.");
     $("addVehicleModal").classList.remove("show");
     ["newVehicleNumber","newMobile","newVehicleName","newRemarks"].forEach(id => $(id).value = "");
+    $("existingVehiclePanel").style.display = "none";
+    $("saveAdd").disabled = false;
+    existingVehicleMatch = null;
     alert(result.message || "Vehicle added.");
     await loadVehicles();
   } catch(e) { alert(e.message); }
@@ -512,91 +943,533 @@ async function savePasswordChange() {
   }
 }
 
+function hasHistoricalAction(vehicleNumber, actionStatus) {
+  const reg = normalizeReg(vehicleNumber);
+  return actionHistory.some(h =>
+    normalizeReg(h.vehicleNumber) === reg &&
+    String(h.status || "").trim() === actionStatus
+  );
+}
+
+function isCurrentlyClosed(vehicleNumber) {
+  const latest = latestVehicleRecord(vehicleNumber);
+  return !!latest &&
+    String(latest.status || "").trim().toLowerCase() === "closed";
+}
+
+function getAllStatusHistory(filterName) {
+  const wantedStatus =
+    filterName === "callDone" ? "Call Done" :
+    filterName === "cantConnect" ? "Can't Connect" :
+    filterName === "closed" ? "Closed" : "";
+
+  if (!wantedStatus) return [];
+
+  const saved = actionHistory
+    .filter(h => String(h.status || "").trim() === wantedStatus)
+    .map(h => ({
+      timestamp: h.timestamp || "",
+      callDate: h.actionDate || h.timestamp || "",
+      vehicleNumber: h.vehicleNumber || "",
+      mobileNumber: h.mobileNumber || "",
+      vehicleName: "",
+      fuelType: "",
+      validUpto: "",
+      status: wantedStatus,
+      remarks: h.remarks || "",
+      source: "history"
+    }));
+
+  const savedKeys = new Set(
+    saved.map(h => [
+      normalizeReg(h.vehicleNumber),
+      String(h.status || ""),
+      String(h.callDate || ""),
+      String(h.remarks || "").trim()
+    ].join("|"))
+  );
+
+  const legacy = vehicleData
+    .filter(v => String(v.status || "").trim() === wantedStatus)
+    .filter(v => {
+      const key = [
+        normalizeReg(v.vehicleNumber),
+        wantedStatus,
+        String(v.callDate || v.timestamp || ""),
+        String(v.remarks || "").trim()
+      ].join("|");
+      return !savedKeys.has(key);
+    })
+    .map(v => ({
+      timestamp: v.timestamp || "",
+      callDate: v.callDate || v.timestamp || "",
+      vehicleNumber: v.vehicleNumber || "",
+      mobileNumber: v.mobileNumber || "",
+      vehicleName: v.vehicleName || "",
+      fuelType: v.fuelType || "",
+      validUpto: v.validUpto || "",
+      status: wantedStatus,
+      remarks: v.remarks || "",
+      source: "legacy"
+    }));
+
+  return [...saved, ...legacy].sort((a,b) => {
+    const da = parseDate(a.callDate) || parseDate(a.timestamp) || new Date(0);
+    const db = parseDate(b.callDate) || parseDate(b.timestamp) || new Date(0);
+    return db - da;
+  });
+}
+
+function latestDetailsForHistoryEntry(entry) {
+  const latest = latestVehicleRecord(entry.vehicleNumber);
+
+  return {
+    ...entry,
+    mobileNumber: entry.mobileNumber || (latest ? latest.mobileNumber : ""),
+    vehicleName: entry.vehicleName || (latest ? latest.vehicleName : ""),
+    fuelType: entry.fuelType || (latest ? latest.fuelType : ""),
+    validUpto: entry.validUpto || (latest ? latest.validUpto : "")
+  };
+}
+
+function renderStatusHistoryEntry(entry, index) {
+  const v = latestDetailsForHistoryEntry(entry);
+
+  const statusClass =
+    v.status === "Call Done" ? "history-type-done" :
+    v.status === "Can't Connect" ? "history-type-cant" :
+    "history-type-closed";
+
+  return `
+    <article class="status-history-entry-card">
+      <div class="status-history-entry-grid">
+        <div class="status-history-item">
+          <span class="status-history-icon shi-blue">🚗</span>
+          <div><small>Vehicle Number</small><strong>${escapeHtml(v.vehicleNumber || "—")}</strong></div>
+        </div>
+
+        <div class="status-history-item">
+          <span class="status-history-icon shi-purple">📱</span>
+          <div><small>Contact Number</small><strong>${escapeHtml(v.mobileNumber || "—")}</strong></div>
+        </div>
+
+        <div class="status-history-item">
+          <span class="status-history-icon shi-teal">🚙</span>
+          <div><small>Vehicle Name</small><strong>${escapeHtml(v.vehicleName || "—")}</strong></div>
+        </div>
+
+        <div class="status-history-item">
+          <span class="status-history-icon shi-green">📅</span>
+          <div><small>Action Date</small><strong>${escapeHtml(formatDisplayDate(v.callDate || v.timestamp))}</strong></div>
+        </div>
+
+        <div class="status-history-item">
+          <span class="status-history-icon shi-yellow">⛽</span>
+          <div><small>Fuel Type</small><strong>${escapeHtml(String(v.fuelType || "—").toUpperCase())}</strong></div>
+        </div>
+
+        <div class="status-history-item">
+          <span class="status-history-icon shi-red">🗓️</span>
+          <div><small>PUCC Expiry</small><strong>${escapeHtml(v.validUpto ? formatDisplayDate(v.validUpto) : "—")}</strong></div>
+        </div>
+
+        <div class="status-history-item">
+          <span class="status-history-icon shi-orange">📄</span>
+          <div><small>Status</small><strong class="${statusClass}">${escapeHtml(v.status)}</strong></div>
+        </div>
+
+        <div class="status-history-remark">
+          <small>Remarks</small>
+          <strong>${escapeHtml(String(v.remarks || "").trim() || "No remarks entered")}</strong>
+        </div>
+      </div>
+    </article>`;
+}
+
 function getVehiclesForFilter(filterName) {
   return vehicleData.filter(v => {
     const status = String(v.status || "Pending").trim();
     const lower = status.toLowerCase();
     const days = daysLeftForVehicle(v);
+    const closed = isCurrentlyClosed(v.vehicleNumber);
 
     if (filterName === "urgent") {
-      return lower !== "closed" && days !== null && days >= 0 && days <= 3;
+      return !closed && days !== null && days >= 0 && days <= 3;
     }
     if (filterName === "expired") {
-      return lower !== "closed" && days !== null && days < 0;
+      return !closed && days !== null && days < 0;
     }
+
+    // Once a vehicle has had this action, keep it in the list
+    // until the vehicle is finally Closed.
     if (filterName === "callDone") {
-      return status === "Call Done";
+      return !closed && (
+        hasHistoricalAction(v.vehicleNumber, "Call Done") ||
+        status === "Call Done"
+      );
     }
     if (filterName === "cantConnect") {
-      return status === "Can't Connect";
+      return !closed && (
+        hasHistoricalAction(v.vehicleNumber, "Can't Connect") ||
+        status === "Can't Connect"
+      );
     }
+
     if (filterName === "closed") {
-      return lower === "closed";
+      return closed;
+    }
+    if (filterName === "callHistory") {
+      return !closed && (
+        hasHistoricalAction(v.vehicleNumber, "Call Done") ||
+        hasHistoricalAction(v.vehicleNumber, "Can't Connect") ||
+        status === "Call Done" ||
+        status === "Can't Connect"
+      );
     }
     if (filterName === "expired5") {
-      return lower !== "closed" && days !== null && days < 0 && days >= -5;
+      return !closed && days !== null && days < 0 && days >= -5;
     }
     if (filterName === "expiredOlder") {
-      return lower !== "closed" && days !== null && days < -5;
+      return !closed && days !== null && days < -5;
     }
-    return [];
+    return false;
   });
+}
+
+function formatDisplayDate(value) {
+  const d = parseDate(value);
+  if (!d) return String(value || "—");
+  return String(d.getDate()).padStart(2,"0") + "-" +
+    String(d.getMonth()+1).padStart(2,"0") + "-" +
+    d.getFullYear();
+}
+
+function normalizeReg(value) {
+  return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function getVehicleHistory(vehicleNumber) {
+  const reg = normalizeReg(vehicleNumber);
+
+  // Permanent history created by V34+ backend.
+  const saved = actionHistory
+    .filter(h => normalizeReg(h.vehicleNumber) === reg)
+    .map(h => ({
+      timestamp: h.timestamp || "",
+      callDate: h.actionDate || h.timestamp || "",
+      vehicleNumber: h.vehicleNumber || vehicleNumber,
+      mobileNumber: h.mobileNumber || "",
+      status: h.status || "",
+      remarks: h.remarks || ""
+    }));
+
+  // Older records already present in Sheet1 are also included.
+  // This makes history visible for live vehicles as well as older ones.
+  const legacy = vehicleData
+    .filter(v => normalizeReg(v.vehicleNumber) === reg)
+    .filter(v => {
+      const status = String(v.status || "").trim();
+      return status === "Call Done" ||
+             status === "Can't Connect" ||
+             status === "Closed" ||
+             !!String(v.remarks || "").trim() ||
+             !!String(v.callDate || "").trim();
+    })
+    .map(v => ({
+      timestamp: v.timestamp || "",
+      callDate: v.callDate || v.timestamp || "",
+      vehicleNumber: v.vehicleNumber || vehicleNumber,
+      mobileNumber: v.mobileNumber || "",
+      status: v.status || "",
+      remarks: v.remarks || ""
+    }));
+
+  const merged = [...saved, ...legacy];
+
+  const seen = new Set();
+
+  return merged
+    .filter(h => {
+      const key = [
+        normalizeReg(h.vehicleNumber),
+        String(h.callDate || h.timestamp || ""),
+        String(h.status || ""),
+        String(h.remarks || "")
+      ].join("|");
+
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a,b) => {
+      const da = parseDate(a.callDate) || parseDate(a.timestamp) || new Date(0);
+      const db = parseDate(b.callDate) || parseDate(b.timestamp) || new Date(0);
+      return db - da;
+    });
+}
+
+function latestVehicleRecord(vehicleNumber) {
+  const reg = normalizeReg(vehicleNumber);
+  const matches = vehicleData
+    .filter(v => normalizeReg(v.vehicleNumber) === reg)
+    .sort((a,b) => {
+      const da = parseDate(a.timestamp) || new Date(0);
+      const db = parseDate(b.timestamp) || new Date(0);
+      return db - da;
+    });
+
+  return matches[0] || null;
+}
+
+function historyDotClass(index) {
+  return ["dot-green","dot-blue","dot-purple","dot-orange"][index % 4];
+}
+
+function renderStatusVehicleCard(vehicle, filterName) {
+  const latest = latestVehicleRecord(vehicle.vehicleNumber) || vehicle;
+  const history = getVehicleHistory(vehicle.vehicleNumber);
+  const closed = String(latest.status || "").trim().toLowerCase() === "closed";
+
+  const statusClass =
+    String(latest.status || "").includes("Can't") ? "status-bad" : "status-good";
+
+  const historyEntryHtml = (h, index) => `
+    <div class="history-entry">
+      <span class="history-dot ${historyDotClass(index)}"></span>
+      <div class="history-entry-top">
+        <div class="history-meta">
+          <span class="history-date">${escapeHtml(formatDisplayDate(h.callDate || h.timestamp))}</span>
+          <span class="history-sep">|</span>
+          <span class="history-status ${
+            String(h.status || "") === "Call Done"
+              ? "history-type-done"
+              : String(h.status || "") === "Can't Connect"
+                ? "history-type-cant"
+                : ""
+          }">${escapeHtml(h.status || "Update")}</span>
+        </div>
+        <div class="history-remark">${escapeHtml(String(h.remarks || "").trim() || "No remarks entered")}</div>
+      </div>
+    </div>`;
+
+  let historyHtml = '<div class="history-empty">No call history or remarks available for this vehicle.</div>';
+
+  if (history.length) {
+    const latestHistory = historyEntryHtml(history[0], 0);
+    const olderHistory = history.slice(1);
+
+    if (olderHistory.length) {
+      const historyId = "olderHistory_" +
+        normalizeReg(latest.vehicleNumber) + "_" +
+        String(filterName || "history");
+
+      historyHtml =
+        latestHistory +
+        `<button class="history-toggle" type="button"
+          onclick="toggleOlderHistory('${historyId}', this)">
+          <span class="history-toggle-arrow">▼</span>
+          <span>Show ${olderHistory.length} Older ${olderHistory.length === 1 ? "History" : "Histories"}</span>
+        </button>
+        <div id="${historyId}" class="history-older-wrap">
+          ${olderHistory.map((h,index) => historyEntryHtml(h,index + 1)).join("")}
+        </div>`;
+    } else {
+      historyHtml = latestHistory;
+    }
+  }
+
+  const actions = closed
+    ? '<div class="history-closed-label">🔒 Closed — No further actions available</div>'
+    : `<button class="history-call" onclick="miniStatusAction('callDone',${Number(latest.rowNumber)})">📞 Call Done</button>
+       <button class="history-cant" onclick="miniStatusAction('cantConnect',${Number(latest.rowNumber)})">📵 Can't Connect</button>
+       <button class="history-close" onclick="miniStatusAction('close',${Number(latest.rowNumber)})">🔒 Close</button>`;
+
+  return `
+    <article class="vehicle-history-card ${filterName === "callHistory" ? "call-history-card" : ""}">
+      <div class="vehicle-history-top">
+        <div class="vehicle-info-grid">
+          <div class="vehicle-info-item">
+            <div class="vehicle-info-icon vi-blue">🚗</div>
+            <div class="vehicle-info-text"><div class="vehicle-info-label">Vehicle Number</div><div class="vehicle-info-value">${escapeHtml(latest.vehicleNumber || "—")}</div></div>
+          </div>
+          <div class="vehicle-info-item">
+            <div class="vehicle-info-icon vi-purple">👤</div>
+            <div class="vehicle-info-text"><div class="vehicle-info-label">Contact Number</div><div class="vehicle-info-value">${escapeHtml(latest.mobileNumber || "—")}</div></div>
+          </div>
+          <div class="vehicle-info-item">
+            <div class="vehicle-info-icon vi-teal">🚙</div>
+            <div class="vehicle-info-text"><div class="vehicle-info-label">Vehicle Name</div><div class="vehicle-info-value">${escapeHtml(latest.vehicleName || "—")}</div></div>
+          </div>
+          <div class="vehicle-info-item">
+            <div class="vehicle-info-icon vi-green">📞</div>
+            <div class="vehicle-info-text"><div class="vehicle-info-label">Call / Action Date</div><div class="vehicle-info-value">${escapeHtml(formatDisplayDate(latest.callDate || latest.timestamp))}</div></div>
+          </div>
+
+          <div class="vehicle-info-item">
+            <div class="vehicle-info-icon vi-violet">📅</div>
+            <div class="vehicle-info-text"><div class="vehicle-info-label">Added Date</div><div class="vehicle-info-value">${escapeHtml(formatDisplayDate(latest.timestamp))}</div></div>
+          </div>
+          <div class="vehicle-info-item">
+            <div class="vehicle-info-icon vi-yellow">⛽</div>
+            <div class="vehicle-info-text"><div class="vehicle-info-label">Fuel Type</div><div class="vehicle-info-value">${escapeHtml(String(latest.fuelType || "—").toUpperCase())}</div></div>
+          </div>
+          <div class="vehicle-info-item">
+            <div class="vehicle-info-icon vi-red">🗓️</div>
+            <div class="vehicle-info-text"><div class="vehicle-info-label">PUCC Expiry</div><div class="vehicle-info-value">${escapeHtml(formatExpiryForVehicle(latest))}</div></div>
+          </div>
+          <div class="vehicle-info-item">
+            <div class="vehicle-info-icon vi-orange">📄</div>
+            <div class="vehicle-info-text"><div class="vehicle-info-label">Status</div><div class="vehicle-info-value ${statusClass}">${escapeHtml(latest.status || "Pending")}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="history-section">
+        <div class="history-title">🕘 ${
+          filterName === "callHistory"
+            ? "Call Done & Can't Connect History / Remarks"
+            : filterName === "cantConnect"
+              ? "Can't Connect History / Remarks"
+              : "Call Done History / Remarks"
+        }</div>
+        <div class="history-timeline">${historyHtml}</div>
+      </div>
+
+      ${actions ? `<div class="vehicle-history-actions">${actions}</div>` : ""}
+    </article>`;
 }
 
 function openMiniVehicleScreen(filterName) {
   const titles = {
     urgent: "🚨 Urgent Vehicles",
     expired: "⛔ Expired Vehicles",
-    callDone: "✅ Call Done Vehicles",
-    cantConnect: "📵 Can't Connect Vehicles",
-    closed: "🔒 Closed Vehicles",
+    callDone: "✅ Call Done History",
+    cantConnect: "📵 Can't Connect History",
+    closed: "🔒 Closed History",
+    callHistory: "🕘 Pending Vehicles",
     expired5: "🕔 Expired 1–5 Days Ago",
     expiredOlder: "📋 Expired More Than 5 Days Ago"
   };
 
+  $("miniVehicleTitle").textContent = titles[filterName] || "Vehicle Details";
+  const cards = $("miniVehicleCards");
+
+  // Call Done / Can't Connect / Closed = every action record.
+  // Same registration number can appear repeatedly and each history entry counts.
+  if (
+    filterName === "callDone" ||
+    filterName === "cantConnect" ||
+    filterName === "closed"
+  ) {
+    const historyList = getAllStatusHistory(filterName);
+
+    $("miniVehicleSummary").textContent =
+      historyList.length +
+      (historyList.length === 1 ? " History Record" : " History Records");
+
+    cards.innerHTML = historyList.length
+      ? historyList.map((entry,index) => renderStatusHistoryEntry(entry,index)).join("")
+      : '<div class="history-empty">No history records found.</div>';
+
+    $("miniVehicleModal").dataset.filterName = filterName;
+    $("miniVehicleModal").classList.add("show");
+    return;
+  }
+
   let list = getVehiclesForFilter(filterName);
 
-  list.sort((a, b) => {
-    const da = daysLeftForVehicle(a);
-    const db = daysLeftForVehicle(b);
+  if (filterName === "callHistory") {
+    const seen = new Set();
 
-    if (filterName === "callDone" || filterName === "cantConnect" || filterName === "closed") {
-      const ta = parseDate(a.timestamp) || new Date(0);
-      const tb = parseDate(b.timestamp) || new Date(0);
-      return tb - ta;
-    }
+    list = list.filter(v => {
+      const reg = normalizeReg(v.vehicleNumber);
+      if (!reg || seen.has(reg)) return false;
+      seen.add(reg);
+      return true;
+    });
+  }
 
-    return (db ?? -999999) - (da ?? -999999);
-  });
-
-  $("miniVehicleTitle").textContent = titles[filterName] || "Vehicle Details";
-  $("miniVehicleSummary").textContent = list.length + (list.length === 1 ? " vehicle" : " vehicles");
-
-  const body = $("miniVehicleBody");
+  $("miniVehicleSummary").textContent =
+    list.length + (list.length === 1 ? " Vehicle" : " Vehicles");
 
   if (!list.length) {
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px">No vehicle details found.</td></tr>';
+    cards.innerHTML =
+      '<div class="history-empty">No vehicle details found.</div>';
+
+  } else if (filterName === "callHistory") {
+    cards.innerHTML =
+      list.map(v => renderStatusVehicleCard(v, filterName)).join("");
+
   } else {
-    body.innerHTML = list.map(v => {
+    cards.innerHTML = list.map(v => {
       const days = daysLeftForVehicle(v);
-      const dayText = days === null ? "—" :
+
+      const dayText =
+        days === null ? "—" :
         days < 0 ? Math.abs(days) + " days ago" :
         days === 0 ? "Today" :
         days + " days";
 
-      return `<tr>
-        <td data-label="Registration"><strong>${escapeHtml(v.vehicleNumber)}</strong></td>
-        <td>${escapeHtml(v.mobileNumber)}</td>
-        <td>${escapeHtml(v.vehicleName)}</td>
-        <td data-label="PUCC Expiry">${escapeHtml(formatExpiryForVehicle(v))}</td>
-        <td>${dayText}</td>
-        <td data-label="Record Status">${escapeHtml(v.status || "Pending")}</td>
-      </tr>`;
+      return `<article class="vehicle-history-card">
+        <div class="vehicle-history-top">
+          <div class="vehicle-info-grid">
+            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-blue">🚗</div><div class="vehicle-info-text"><div class="vehicle-info-label">Vehicle Number</div><div class="vehicle-info-value">${escapeHtml(v.vehicleNumber)}</div></div></div>
+            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-purple">👤</div><div class="vehicle-info-text"><div class="vehicle-info-label">Phone</div><div class="vehicle-info-value">${escapeHtml(v.mobileNumber)}</div></div></div>
+            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-teal">🚙</div><div class="vehicle-info-text"><div class="vehicle-info-label">Vehicle</div><div class="vehicle-info-value">${escapeHtml(v.vehicleName)}</div></div></div>
+            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-red">🗓️</div><div class="vehicle-info-text"><div class="vehicle-info-label">Expiry</div><div class="vehicle-info-value">${escapeHtml(formatExpiryForVehicle(v))}</div></div></div>
+            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-yellow">⌛</div><div class="vehicle-info-text"><div class="vehicle-info-label">Days</div><div class="vehicle-info-value">${escapeHtml(dayText)}</div></div></div>
+            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-orange">📄</div><div class="vehicle-info-text"><div class="vehicle-info-label">Status</div><div class="vehicle-info-value">${escapeHtml(v.status || "Pending")}</div></div></div>
+          </div>
+        </div>
+      </article>`;
     }).join("");
   }
 
+  $("miniVehicleModal").dataset.filterName = filterName;
   $("miniVehicleModal").classList.add("show");
 }
+
+function toggleOlderHistory(id, button) {
+  const panel = document.getElementById(id);
+  if (!panel) return;
+
+  const opening = !panel.classList.contains("show");
+  panel.classList.toggle("show", opening);
+  button.classList.toggle("open", opening);
+
+  const count = panel.querySelectorAll(".history-entry").length;
+  const label = button.querySelector("span:last-child");
+
+  if (label) {
+    label.textContent = opening
+      ? "Hide Older Call History"
+      : "Show " + count + " Older " + (count === 1 ? "Call History" : "Call Histories");
+  }
+}
+
+window.toggleOlderHistory = toggleOlderHistory;
+
+function miniStatusAction(action, rowNumber) {
+  const originFilter = $("miniVehicleModal").dataset.filterName || "";
+  $("miniVehicleModal").classList.remove("show");
+  $("remarksActionModal").dataset.originFilter = originFilter;
+  openRemarksAction(action, rowNumber);
+}
+
+function miniEditVehicle(rowNumber) {
+  const vehicle = vehicleData.find(v => Number(v.rowNumber) === Number(rowNumber));
+  if (!vehicle) {
+    alert("Vehicle record not found.");
+    return;
+  }
+
+  existingVehicleMatch = vehicle;
+  $("miniVehicleModal").classList.remove("show");
+  openExistingVehicleEdit();
+}
+
+window.miniStatusAction = miniStatusAction;
+window.miniEditVehicle = miniEditVehicle;
 
 function setStatusFilter(filterName, button) {
   openMiniVehicleScreen(filterName);
@@ -618,8 +1491,65 @@ function closeMobileSidebar() {
   $("mobileOverlay").classList.remove("show");
 }
 
+
+function exportAllDataToExcel() {
+  if (!vehicleData.length) {
+    alert("No vehicle data available to export.");
+    return;
+  }
+  if (typeof XLSX === "undefined") {
+    alert("Excel export library did not load. Check the internet connection and try again.");
+    return;
+  }
+
+  const rows = vehicleData.map(v => ({
+    "Timestamp": v.timestamp || "",
+    "Vehicle Number": v.vehicleNumber || "",
+    "Mobile Number": v.mobileNumber || "",
+    "Valid Upto": v.validUpto || "",
+    "Vehicle Name": v.vehicleName || "",
+    "Fuel Type": v.fuelType || "",
+    "Status": v.status || "",
+    "Call Date": v.callDate || "",
+    "Remarks": v.remarks || ""
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = [
+    {wch:14},{wch:18},{wch:16},{wch:14},{wch:22},
+    {wch:14},{wch:18},{wch:14},{wch:32}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Vehicle Records");
+
+  const now = new Date();
+  const stamp = now.getFullYear() +
+    String(now.getMonth()+1).padStart(2,"0") +
+    String(now.getDate()).padStart(2,"0");
+
+  XLSX.writeFile(wb, `SMOGCERT_All_Vehicle_Data_${stamp}.xlsx`);
+}
+
+
 function bindUI() {
   $("loginBtn").onclick = login;
+  $("closeRemarksAction").onclick = () => {
+    $("remarksActionModal").classList.remove("show");
+    $("remarksActionModal").dataset.originFilter = "";
+    pendingRemarksAction = null;
+  };
+  $("cancelRemarksAction").onclick = () => {
+    $("remarksActionModal").classList.remove("show");
+    $("remarksActionModal").dataset.originFilter = "";
+    pendingRemarksAction = null;
+  };
+  $("confirmRemarksAction").onclick = confirmRemarksAction;
+  $("remarksActionModal").onclick = e => {
+    if (e.target === $("remarksActionModal")) {
+      $("remarksActionModal").classList.remove("show");
+      pendingRemarksAction = null;
+    }
+  };
   if ($("mobileMenuBtn")) $("mobileMenuBtn").onclick = openMobileSidebar;
   if ($("mobileMenuClose")) $("mobileMenuClose").onclick = closeMobileSidebar;
   if ($("mobileOverlay")) $("mobileOverlay").onclick = closeMobileSidebar;
@@ -628,9 +1558,24 @@ function bindUI() {
     closeMobileSidebar();
     window.scrollTo({top:0,behavior:"smooth"});
   };
-  if ($("mobileAddBtn")) $("mobileAddBtn").onclick = () => {
+  if ($("mobileAddBtn")) $("mobileAddBtn").onclick = async () => {
     $("addVehicleModal").classList.add("show");
+    $("existingVehiclePanel").style.display = "none";
+    $("saveAdd").disabled = false;
+    existingVehicleMatch = null;
     updateAddVehicleExpiryPreview();
+
+    try {
+      const result = await apiPost("getVehicles");
+      if (result.success) {
+        vehicleData = Array.isArray(result.vehicles) ? result.vehicles : [];
+        actionHistory = Array.isArray(result.history) ? result.history : actionHistory;
+        updateDashboard();
+        checkExistingVehicleNumber();
+      }
+    } catch (e) {
+      console.error("Could not refresh data for duplicate check:", e);
+    }
   };
   if ($("mobileRecordsBtn")) $("mobileRecordsBtn").onclick = async () => {
     if (!(await verifyRecordsPassword())) return;
@@ -689,11 +1634,48 @@ function bindUI() {
     renderVehicles();
   };
 
-  $("pdfButton").onclick = () => window.print();
-  $("addVehicleBtn").onclick = () => { $("addVehicleModal").classList.add("show"); updateAddVehicleExpiryPreview(); };
+  $("pdfButton").onclick = exportAllDataToExcel;
+  $("addVehicleBtn").onclick = async () => {
+    $("addVehicleModal").classList.add("show");
+    $("existingVehiclePanel").style.display = "none";
+    $("saveAdd").disabled = false;
+    existingVehicleMatch = null;
+    updateAddVehicleExpiryPreview();
+
+    try {
+      const result = await apiPost("getVehicles");
+      if (result.success) {
+        vehicleData = Array.isArray(result.vehicles) ? result.vehicles : [];
+        actionHistory = Array.isArray(result.history) ? result.history : actionHistory;
+        updateDashboard();
+        checkExistingVehicleNumber();
+      }
+    } catch (e) {
+      console.error("Could not refresh data for duplicate check:", e);
+    }
+  };
   $("cancelAdd").onclick = () => $("addVehicleModal").classList.remove("show");
   $("closeAddVehicle").onclick = () => $("addVehicleModal").classList.remove("show");
   $("newValidity").onchange = updateAddVehicleExpiryPreview;
+  $("newVehicleNumber").addEventListener("input", checkExistingVehicleNumber);
+  $("newVehicleNumber").addEventListener("blur", checkExistingVehicleNumber);
+  $("editExistingVehicleBtn").onclick = openExistingVehicleEdit;
+  $("editValidity").onchange = updateEditExpiryPreview;
+  $("closeEditVehicle").onclick = () => $("editVehicleModal").classList.remove("show");
+  $("cancelEditVehicle").onclick = () => $("editVehicleModal").classList.remove("show");
+  $("saveEditVehicle").onclick = saveExistingVehicleEdit;
+  $("successMiniOk").onclick = () => {
+    const reopenFilter = $("successMiniModal").dataset.reopenFilter || "";
+    $("successMiniModal").classList.remove("show");
+    $("successMiniModal").dataset.reopenFilter = "";
+
+    if (reopenFilter) {
+      openMiniVehicleScreen(reopenFilter);
+    }
+  };
+  $("editVehicleModal").onclick = e => {
+    if (e.target === $("editVehicleModal")) $("editVehicleModal").classList.remove("show");
+  };
   $("saveAdd").onclick = saveNewVehicle;
 
 
