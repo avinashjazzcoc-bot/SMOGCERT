@@ -8,6 +8,8 @@ let actionHistory = [];
 let currentView = "upcoming";
 let currentFilter = "";
 let currentPage = 1;
+let rowsPerPage = 5;
+let totalFilteredRows = 0;
 let existingVehicleMatch = null;
 const PAGE_SIZE = 5;
 
@@ -221,6 +223,7 @@ function formatExpiryForVehicle(vehicle) {
 }
 
 function updateDashboard() {
+  let expiringSevenDays = 0;
   let urgent = 0;
   let expired = 0;
   let expiredFiveDays = 0;
@@ -255,7 +258,8 @@ function updateDashboard() {
       activeRegs.add(reg);
     }
 
-    if (lower === "closed") return;
+    // Reminder counters include only vehicles still Pending.
+    if (lower !== "pending") return;
 
     const days = daysLeftForVehicle(v);
     if (days === null) return;
@@ -268,8 +272,10 @@ function updateDashboard() {
       } else {
         expiredOlderThanFive++;
       }
-    } else if (days <= 3) {
-      urgent++;
+    } else {
+      // Expiring in 7 Days includes today through the next 7 days.
+      if (days <= 7) expiringSevenDays++;
+      if (days <= 3) urgent++;
     }
   });
 
@@ -352,6 +358,7 @@ function updateDashboard() {
   });
 
   if ($("totalVehicles")) $("totalVehicles").textContent = latestVehicles.length;
+  if ($("expiringSevenDays")) $("expiringSevenDays").textContent = expiringSevenDays;
   if ($("urgentVehicles")) $("urgentVehicles").textContent = urgent;
   if ($("expiredVehicles")) $("expiredVehicles").textContent = expired;
   if ($("expiredFiveDays")) $("expiredFiveDays").textContent = expiredFiveDays;
@@ -372,63 +379,90 @@ function updateDashboard() {
 
 }
 
+
+
+function maskPhone(value) {
+  const raw = String(value == null ? "" : value).trim();
+  if (!raw) return "—";
+
+  // Keep only digits for normal phone numbers.
+  const digits = raw.replace(/\D/g, "");
+
+  if (!digits) return escapeHtml(raw);
+
+  // Show only the final 4 digits, matching the existing dashboard style.
+  if (digits.length <= 4) return digits;
+
+  return "******" + digits.slice(-4);
+}
+
+window.maskPhone = maskPhone;
+
+function expiryState(days) {
+  if (days === null || days === undefined || Number.isNaN(days)) {
+    return {
+      label: "Unknown",
+      badgeClass: "expiry-valid",
+      daysClass: ""
+    };
+  }
+
+  if (days < 0) {
+    return {
+      label: "Expired",
+      badgeClass: "expiry-expired",
+      daysClass: "days-expired"
+    };
+  }
+
+  if (days <= 3) {
+    return {
+      label: "Urgent",
+      badgeClass: "expiry-urgent",
+      daysClass: "days-urgent"
+    };
+  }
+
+  if (days <= 10) {
+    return {
+      label: "Due Soon",
+      badgeClass: "expiry-due",
+      daysClass: "days-due"
+    };
+  }
+
+  return {
+    label: "Valid",
+    badgeClass: "expiry-valid",
+    daysClass: "days-valid"
+  };
+}
+
 function renderVehicles() {
-  const search = $("searchInput").value.trim().toLowerCase();
-  const expiryFilter = $("expiryFilter") ? $("expiryFilter").value : "all";
-  const recordFilter = $("recordFilter") ? $("recordFilter").value : "all";
-  let list = vehicleData.slice();
+  const search = String($("searchInput").value || "").trim().toLowerCase();
+  const expiryFilter = $("expiryFilter").value;
+  const recordFilter = $("recordFilter").value;
+  const heading = $("dataListHeading");
 
-  if (search) {
-    list = list.filter(v => [v.vehicleNumber,v.mobileNumber,v.vehicleName,v.fuelType]
-      .join(" ").toLowerCase().includes(search));
-  }
+  const matchesSearch = v =>
+    String(v.vehicleNumber || "").toLowerCase().includes(search) ||
+    String(v.mobileNumber || "").toLowerCase().includes(search) ||
+    String(v.vehicleName || "").toLowerCase().includes(search);
 
-  if (expiryFilter !== "all") {
-    list = list.filter(v => {
-      const days = daysLeftForVehicle(v);
-      if (expiryFilter === "valid") return days !== null && days > 10;
-      if (expiryFilter === "soon") return days !== null && days >= 0 && days <= 10;
-      if (expiryFilter === "urgent") return days !== null && days >= 0 && days <= 3;
-      if (expiryFilter === "expired") return days !== null && days < 0;
-      return true;
-    });
-  }
+  const reminderFilter = v => {
+    const status = String(v.status || "Pending").trim().toLowerCase();
 
-  if (recordFilter !== "all") {
-    list = list.filter(v => String(v.status || "Pending").toLowerCase() === recordFilter.toLowerCase());
-  }
+    // Reminder list contains only Pending vehicles.
+    if (status !== "pending") return false;
 
-  if (currentFilter) {
-    list = list.filter(v => {
-      const status = String(v.status || "Pending").trim();
-      const lower = status.toLowerCase();
-      const days = daysLeftForVehicle(v);
+    const d = daysLeftForVehicle(v);
 
-      if (currentFilter === "urgent") return lower !== "closed" && days !== null && days >= 0 && days <= 3;
-      if (currentFilter === "expired") return lower !== "closed" && days !== null && days < 0;
-      if (currentFilter === "callDone") return status === "Call Done";
-      if (currentFilter === "cantConnect") return status === "Can't Connect";
-      if (currentFilter === "closed") return lower === "closed";
-      if (currentFilter === "expired5") return lower !== "closed" && days !== null && days < 0 && days >= -5;
-      if (currentFilter === "expiredOlder") return lower !== "closed" && days !== null && days < -5;
-      return true;
-    });
-    list.sort((a,b) => (daysLeftForVehicle(b) ?? -999999) - (daysLeftForVehicle(a) ?? -999999));
-  } else if (!search && expiryFilter === "all" && recordFilter === "all" && currentView === "upcoming") {
-    list = list.filter(v => {
-      const lower = String(v.status || "").trim().toLowerCase();
+    // All expired + vehicles expiring within 10 days.
+    return d !== null && d <= 10;
+  };
 
-      // Closed vehicles never appear in live reminder lists.
-      if (lower === "closed") return false;
-
-      const d = daysLeftForVehicle(v);
-
-      // Show all expired vehicles and vehicles expiring within 10 days.
-      return d !== null && d <= 10;
-    });
-
-    // Urgent / soon-expiring first, then recently expired, then older expired.
-    list.sort((a,b) => {
+  const sortReminderList = list => {
+    list.sort((a, b) => {
       const da = daysLeftForVehicle(a);
       const db = daysLeftForVehicle(b);
 
@@ -436,70 +470,153 @@ function renderVehicles() {
       if (da === null) return 1;
       if (db === null) return -1;
 
-      // Positive days first (closest expiry first), then expired by most recent.
       if (da >= 0 && db >= 0) return da - db;
       if (da >= 0 && db < 0) return -1;
       if (da < 0 && db >= 0) return 1;
 
       return db - da;
     });
+
+    return list;
+  };
+
+  let list = [];
+  let activeDisplayMode = currentView;
+
+  // ---------------------------------------------------------
+  // SEARCH PRIORITY
+  // ---------------------------------------------------------
+  if (search) {
+    // FIRST: search only inside Expired & Soon Expiring.
+    const reminderMatches = sortReminderList(
+      vehicleData
+        .filter(reminderFilter)
+        .filter(matchesSearch)
+    );
+
+    if (reminderMatches.length) {
+      list = reminderMatches;
+      activeDisplayMode = "upcoming";
+      if (heading) heading.textContent = "Expired & Soon Expiring";
+    } else {
+      // SECOND: if no reminder result, search all Vehicle Records.
+      list = vehicleData.filter(matchesSearch);
+      activeDisplayMode = "records";
+      if (heading) heading.textContent = "Vehicle Records";
+    }
   } else {
-    list.sort((a,b) => {
-      const da = parseDate(a.timestamp) || new Date(0);
-      const db = parseDate(b.timestamp) || new Date(0);
-      return db - da;
+    // -------------------------------------------------------
+    // NORMAL VIEW
+    // -------------------------------------------------------
+    if (currentView === "upcoming") {
+      list = sortReminderList(
+        vehicleData.filter(reminderFilter)
+      );
+      if (heading) heading.textContent = "Expired & Soon Expiring";
+    } else {
+      list = [...vehicleData];
+      if (heading) heading.textContent = "Vehicle Records";
+    }
+  }
+
+  // ---------------------------------------------------------
+  // DROPDOWN FILTERS
+  // ---------------------------------------------------------
+  if (expiryFilter !== "all") {
+    list = list.filter(v => {
+      const days = daysLeftForVehicle(v);
+
+      if (expiryFilter === "valid") {
+        return days !== null && days > 10;
+      }
+
+      if (expiryFilter === "soon") {
+        return days !== null && days >= 0 && days <= 10;
+      }
+
+      if (expiryFilter === "expired") {
+        return days !== null && days < 0;
+      }
+
+      return true;
     });
   }
 
-  const totalItems = list.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  if (recordFilter !== "all") {
+    list = list.filter(v => {
+      const status = String(v.status || "Pending").trim().toLowerCase();
+
+      if (recordFilter === "pending") return status === "pending";
+      if (recordFilter === "callDone") return status === "call done";
+      if (recordFilter === "cantConnect") return status === "can't connect";
+      if (recordFilter === "closed") return status === "closed";
+
+      return true;
+    });
+  }
+
+  totalFilteredRows = list.length;
+
+  const totalPages = Math.max(1, Math.ceil(list.length / rowsPerPage));
+
   if (currentPage > totalPages) currentPage = totalPages;
   if (currentPage < 1) currentPage = 1;
 
-  const startIndex = (currentPage - 1) * PAGE_SIZE;
-  const pageList = list.slice(startIndex, startIndex + PAGE_SIZE);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const pageRows = list.slice(startIndex, startIndex + rowsPerPage);
 
-  if (!pageList.length) {
-    tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:30px">${search ? "No vehicle found." : "No vehicle records found."}</td></tr>`;
-    updatePagination(totalItems, totalPages, 0, 0);
+  const body = $("tableBody");
+
+  if (!pageRows.length) {
+    body.innerHTML =
+      `<tr><td colspan="9" style="text-align:center;padding:30px;color:#64748b;font-weight:800">
+        ${search
+          ? activeDisplayMode === "upcoming"
+            ? "No matching expired or soon-expiring vehicles."
+            : "No matching vehicle records found."
+          : currentView === "upcoming"
+            ? "No pending expired or soon-expiring vehicles."
+            : "No vehicle records found."}
+      </td></tr>`;
+
+    updatePagination(0, 1);
     return;
   }
 
-  tableBody.innerHTML = pageList.map(v => {
-    const d = daysLeftForVehicle(v);
-    let label = "Valid", cls = "expiry-valid", daysCls = "days-valid";
-    if (d !== null && d < 0) { label = "Expired"; cls = "expiry-expired"; daysCls = "days-expired"; }
-    else if (d !== null && d <= 3) { label = "Urgent"; cls = "expiry-urgent"; daysCls = "days-urgent"; }
-    else if (d !== null && d <= 10) { label = "Soon Expiring"; cls = "expiry-due"; daysCls = "days-due"; }
+  body.innerHTML = pageRows.map(v => {
+    const days = daysLeftForVehicle(v);
+    const expiry = expiryState(days);
+    const status = String(v.status || "Pending").trim();
 
-    const dayText = d === null ? "—" : d < 0 ? `${Math.abs(d)} days ago` : d === 0 ? "Today" : `${d} days`;
+    const daysText =
+      days === null ? "—" :
+      days < 0 ? `${Math.abs(days)} days ago` :
+      days === 0 ? "Today" :
+      `${days} days`;
+
+    const statusLower = status.toLowerCase();
+
+    const maskedPhone = (() => {
+      const d = String(v.mobileNumber || "").replace(/\D/g, "");
+      return d ? (d.length > 4 ? "******" + d.slice(-4) : d) : "—";
+    })();
 
     return `<tr>
-      <td data-label="Registration"><strong>${escapeHtml(v.vehicleNumber)}</strong></td>
-      <td data-label="Phone">${escapeHtml(maskPhone(v.mobileNumber))}</td>
-      <td data-label="Vehicle">${escapeHtml(v.vehicleName || "unknown")}</td>
-      <td data-label="Fuel">${escapeHtml(v.fuelType || "unknown")}</td>
+      <td data-label="Registration No"><strong>${escapeHtml(v.vehicleNumber || "")}</strong></td>
+      <td data-label="Phone">${escapeHtml(maskedPhone)}</td>
+      <td data-label="Vehicle Name">${escapeHtml(v.vehicleName || "")}</td>
+      <td data-label="Fuel Type">${escapeHtml(v.fuelType || "")}</td>
       <td data-label="PUCC Expiry">${escapeHtml(formatExpiryForVehicle(v))}</td>
-      <td data-label="Days Left" class="${daysCls}">${dayText}</td>
-      <td data-label="Expiry Status"><span class="record-expiry ${cls}">${label}</span></td>
-      <td data-label="Record Status">${escapeHtml(v.status || "Pending")}</td>
-      <td data-label="Actions">${String(v.status || "").trim().toLowerCase() === "closed"
-        ? '<span class="closed-no-actions">🔒 Closed — No Actions</span>'
-        : `<div class="action-buttons">
-            <button class="callDone" onclick="markStatus('callDone',${Number(v.rowNumber)})">Call Done</button>
-            <button class="cantConnect" onclick="markStatus('cantConnect',${Number(v.rowNumber)})">Can't Connect</button>
-            <button class="closeCase" onclick="markStatus('close',${Number(v.rowNumber)})">Close</button>
-          </div>`}</td>
+      <td data-label="Days Left" class="${expiry.daysClass}">${escapeHtml(daysText)}</td>
+      <td data-label="Expiry Status"><span class="record-expiry ${expiry.badgeClass}">${escapeHtml(expiry.label)}</span></td>
+      <td data-label="Record Status">${escapeHtml(status)}</td>
+      <td data-label="Call">${statusLower === "closed"
+        ? '<span class="closed-no-actions">🔒 Closed</span>'
+        : `<button class="status-call-btn" onclick="window.openStatusUpdater(${Number(v.rowNumber)})">📞 Call</button>`}</td>
     </tr>`;
   }).join("");
 
-  updatePagination(totalItems, totalPages, startIndex + 1, Math.min(startIndex + PAGE_SIZE, totalItems));
-}
-
-function maskPhone(value) {
-  const s = String(value || "");
-  if (s.length <= 4) return s;
-  return "*".repeat(Math.max(0, s.length - 4)) + s.slice(-4);
+  updatePagination(list.length, totalPages);
 }
 
 function updatePagination(totalItems, totalPages, from, to) {
@@ -650,7 +767,71 @@ async function confirmRemarksAction() {
   }
 }
 
-async function markStatus(action, rowNumber) {
+let statusUpdaterRowNumber = null;
+
+function openStatusUpdater(rowNumber) {
+  const row = Number(rowNumber);
+  const vehicle = vehicleData.find(v => Number(v.rowNumber) === row);
+
+  statusUpdaterRowNumber = row;
+
+  const modal = document.getElementById("statusUpdaterModal");
+  const info = document.getElementById("statusUpdaterVehicle");
+
+  if (!modal) {
+    alert("Status Updater window could not be loaded. Please refresh the page.");
+    return;
+  }
+
+  if (info) {
+    info.innerHTML = vehicle
+      ? `<div class="status-updater-detail">
+           <span>Vehicle Number</span>
+           <strong>${escapeHtml(vehicle.vehicleNumber || "—")}</strong>
+         </div>
+         <div class="status-updater-detail">
+           <span>Mobile Number</span>
+           <strong>${escapeHtml(vehicle.mobileNumber || "—")}</strong>
+         </div>`
+      : `<div class="status-updater-detail">
+           <span>Vehicle Number</span>
+           <strong>—</strong>
+         </div>`;
+  }
+
+  if (modal) {
+    modal.classList.add("show");
+    modal.style.display = "flex";
+    modal.setAttribute("aria-hidden", "false");
+  }
+}
+
+function closeStatusUpdater() {
+  const modal = document.getElementById("statusUpdaterModal");
+
+  if (modal) {
+    modal.classList.remove("show");
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  statusUpdaterRowNumber = null;
+}
+
+function chooseStatusUpdate(action) {
+  const row = Number(statusUpdaterRowNumber);
+  if (!row) return;
+
+  closeStatusUpdater();
+  openRemarksAction(action, row);
+}
+
+
+window.openStatusUpdater = openStatusUpdater;
+window.closeStatusUpdater = closeStatusUpdater;
+window.chooseStatusUpdate = chooseStatusUpdate;
+
+function markStatus(action, rowNumber) {
   openRemarksAction(action, rowNumber);
 }
 
@@ -1093,11 +1274,15 @@ function getVehiclesForFilter(filterName) {
     const days = daysLeftForVehicle(v);
     const closed = isCurrentlyClosed(v.vehicleNumber);
 
+    if (filterName === "expiring7") {
+      // Pending vehicles expiring from today through the next 7 days.
+      return lower === "pending" && days !== null && days >= 0 && days <= 7;
+    }
     if (filterName === "urgent") {
-      return !closed && days !== null && days >= 0 && days <= 3;
+      return lower === "pending" && days !== null && days >= 0 && days <= 3;
     }
     if (filterName === "expired") {
-      return !closed && days !== null && days < 0;
+      return lower === "pending" && days !== null && days < 0;
     }
 
     // Once a vehicle has had this action, keep it in the list
@@ -1127,10 +1312,10 @@ function getVehiclesForFilter(filterName) {
       );
     }
     if (filterName === "expired5") {
-      return !closed && days !== null && days < 0 && days >= -5;
+      return lower === "pending" && days !== null && days < 0 && days >= -5;
     }
     if (filterName === "expiredOlder") {
-      return !closed && days !== null && days < -5;
+      return lower === "pending" && days !== null && days < -5;
     }
     return false;
   });
@@ -1341,6 +1526,7 @@ function renderStatusVehicleCard(vehicle, filterName) {
 
 function openMiniVehicleScreen(filterName) {
   const titles = {
+    expiring7: "⏳ Expiring in 7 Days",
     urgent: "🚨 Urgent Vehicles",
     expired: "⛔ Expired Vehicles",
     callDone: "✅ Call Done History",
@@ -1720,3 +1906,17 @@ function escapeHtml(value) {
 
 window.markStatus = markStatus;
 window.renewVehicle = renewVehicle;
+
+document.addEventListener("click", function(e) {
+  const modal = document.getElementById("statusUpdaterModal");
+  if (modal && e.target === modal) closeStatusUpdater();
+});
+
+document.addEventListener("DOMContentLoaded", function () {
+  const modal = document.getElementById("statusUpdaterModal");
+  if (modal) {
+    modal.classList.remove("show");
+    modal.style.display = "none";
+    modal.setAttribute("aria-hidden", "true");
+  }
+});

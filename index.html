@@ -1391,6 +1391,187 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
   }
 }
 
+
+/* V46 - main list single Call button and Status Updater */
+.status-call-btn{
+ width:100%;min-width:110px;min-height:38px;border:0;border-radius:10px;
+ background:linear-gradient(135deg,#34d399,#0ea5e9);color:#fff;font-weight:900;
+ cursor:pointer;box-shadow:0 7px 16px rgba(14,165,233,.18)
+}
+.status-updater-box{width:min(520px,calc(100vw - 28px));background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 24px 70px rgba(4,24,48,.35)}
+.status-updater-head{padding:20px 22px;background:linear-gradient(135deg,#064b83,#0b7fe5);color:#fff;display:flex;align-items:center;justify-content:space-between}
+.status-updater-title-wrap{display:flex;align-items:center;gap:13px}.status-updater-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.15);font-size:22px}
+.status-updater-head h3{margin:0;font-size:22px}.status-updater-head p{margin:4px 0 0;font-size:12px;opacity:.9}
+.status-updater-x{width:40px;height:40px;border:0;border-radius:11px;background:rgba(255,255,255,.14);color:#fff;font-size:28px;cursor:pointer}
+.status-updater-vehicle{margin:18px 20px 4px;padding:13px 15px;border-radius:12px;background:#f2f7fc;border:1px solid #dce8f3;display:flex;justify-content:space-between;align-items:center}
+.status-updater-vehicle span{font-size:12px;color:#64748b;font-weight:800}.status-updater-vehicle strong{font-size:16px;color:#102744}
+.status-updater-actions{padding:18px 20px 22px;display:grid;gap:11px}
+.status-updater-actions button{min-height:52px;border:0;border-radius:12px;color:#fff;font-size:15px;font-weight:900;cursor:pointer}
+.status-update-done{background:linear-gradient(135deg,#34d399,#059669)}.status-update-cant{background:linear-gradient(135deg,#fb7185,#dc2626)}.status-update-close{background:linear-gradient(135deg,#a78bfa,#6d28d9)}
+
+
+/* V47 - Status Updater modal positioning fix */
+#statusUpdaterModal{
+  display:none;
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100vh;
+  z-index:100500;
+  background:rgba(5,20,38,.68);
+  backdrop-filter:blur(5px);
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+#statusUpdaterModal.show{
+  display:flex!important;
+}
+#statusUpdaterModal .status-updater-box{
+  position:relative;
+  margin:auto;
+  width:min(520px,calc(100vw - 32px));
+  max-height:calc(100vh - 36px);
+  overflow:auto;
+  transform:none!important;
+}
+
+
+/* V48 robust Status Updater opening */
+#statusUpdaterModal{
+  display:none!important;
+  visibility:hidden;
+  opacity:0;
+  pointer-events:none;
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483000!important;
+  background:rgba(5,20,38,.72)!important;
+  backdrop-filter:blur(5px);
+  align-items:center!important;
+  justify-content:center!important;
+  padding:18px!important;
+}
+#statusUpdaterModal.show{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+#statusUpdaterModal .status-updater-box{
+  width:min(520px,calc(100vw - 32px))!important;
+  max-height:calc(100vh - 36px)!important;
+  overflow:auto!important;
+  margin:auto!important;
+}
+
+
+/* V50 - large vehicle/mobile details in Status Updater */
+#statusUpdaterModal .status-updater-vehicle{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:12px!important;
+  align-items:stretch!important;
+  background:transparent!important;
+  border:0!important;
+  padding:0!important;
+  margin:18px 20px 4px!important;
+}
+#statusUpdaterModal .status-updater-detail{
+  padding:14px 15px;
+  border-radius:12px;
+  background:#f2f7fc;
+  border:1px solid #dce8f3;
+}
+#statusUpdaterModal .status-updater-detail span{
+  display:block;
+  margin-bottom:5px;
+  font-size:11px;
+  color:#64748b;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.3px;
+}
+#statusUpdaterModal .status-updater-detail strong{
+  display:block;
+  font-size:22px!important;
+  line-height:1.15;
+  color:#0b2e59!important;
+  font-weight:950!important;
+  letter-spacing:.4px;
+  word-break:break-word;
+}
+@media(max-width:520px){
+  #statusUpdaterModal .status-updater-vehicle{
+    grid-template-columns:1fr!important;
+  }
+}
+
+
+/* V52 Vehicle Records search heading */
+.data-list-heading{
+  margin:14px 2px 10px;
+  padding:0 4px;
+  font-size:18px;
+  line-height:1.2;
+  font-weight:950;
+  color:#0b376b;
+}
+
+
+/* V58 - heading directly under first/header row of table */
+.table-section-heading-row td{
+  padding:0!important;
+  border-bottom:1px solid #dce7f1!important;
+  background:#f4f8fc!important;
+}
+.table-section-heading-row .data-list-heading{
+  margin:0!important;
+  padding:12px 16px!important;
+  font-size:16px!important;
+  font-weight:950!important;
+  color:#0b376b!important;
+  background:linear-gradient(90deg,#eef6ff,#f8fbff)!important;
+  border-left:4px solid #0b7fe5!important;
+}
+
+
+/* V59 - small inline heading, not a table row */
+.table-section-heading-row{display:none!important}
+.inline-data-heading{
+  display:inline-block!important;
+  margin:7px 12px 5px!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  font-size:11px!important;
+  line-height:1.2!important;
+  font-weight:800!important;
+  color:#64748b!important;
+  letter-spacing:.15px!important;
+}
+
+
+/* V60 - Expiring in 7 Days card */
+.metric-seven-days,
+.seven-days-card{
+  background:linear-gradient(145deg,#fff,#f4fbff)!important;
+}
+.metric-seven-days .metric-icon,
+.seven-days-card .metric-icon{
+  background:linear-gradient(135deg,#38bdf8,#2563eb)!important;
+  color:#fff!important;
+}
+.metric-seven-days .metric-number,
+.seven-days-card .metric-number{
+  color:#0369a1!important;
+}
+@media(min-width:901px){
+  .dashboard-row-expiry{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  }
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -1529,6 +1710,25 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
 </div>
 
 
+
+<div id="statusUpdaterModal" class="modal status-updater-modal" aria-hidden="true">
+  <div class="status-updater-box">
+    <div class="status-updater-head">
+      <div class="status-updater-title-wrap">
+        <div class="status-updater-icon">📞</div>
+        <div><h3>Status Updater</h3><p>Select an action to update this vehicle.</p></div>
+      </div>
+      <button type="button" class="status-updater-x" onclick="closeStatusUpdater()">×</button>
+    </div>
+    <div id="statusUpdaterVehicle" class="status-updater-vehicle"></div>
+    <div class="status-updater-actions">
+      <button class="status-update-done" onclick="chooseStatusUpdate('callDone')">📞 Call Done</button>
+      <button class="status-update-cant" onclick="chooseStatusUpdate('cantConnect')">📵 Can't Connect</button>
+      <button class="status-update-close" onclick="chooseStatusUpdate('close')">🔒 Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="remarksActionModal" class="modal">
   <div class="modal-box remarks-action-box">
     <div class="remarks-head">
@@ -1641,7 +1841,10 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
       </section>
 
       <section class="dashboard-row dashboard-row-expiry">
-        <button class="metric-card metric-urgent status-filter" type="button" data-filter="urgent">
+        <button class="metric-card metric-seven-days status-filter" type="button" data-filter="urgent">
+          <span class="metric-icon">⏳</span><span><span class="metric-number" id="expiringSevenDays">0</span><span class="metric-label">Expiring in 7 Days<br>(0–3 Days)</span></span>
+        </button>
+<button class="metric-card metric-urgent status-filter" type="button" data-filter="urgent">
           <span class="metric-icon">🚨</span><span><span class="metric-number" id="urgentVehicles">0</span><span class="metric-label">Urgent<br>(0–3 Days)</span></span>
         </button>
         <button class="metric-card metric-expired-five status-filter" type="button" data-filter="expired5">
@@ -1688,8 +1891,10 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
 
       <div id="message"></div>
       <section class="table-card">
+<div id="dataListHeading" class="data-list-heading inline-data-heading">Expired &amp; Soon Expiring</div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Registration No</th><th>Phone</th><th>Vehicle Name</th><th>Fuel Type</th><th>PUCC Expiry</th><th>Days Left</th><th>Expiry Status</th><th>Record Status</th><th>Action</th></tr></thead>
+          <thead><tr><th>Registration No</th><th>Phone</th><th>Vehicle Name</th><th>Fuel Type</th><th>PUCC Expiry</th><th>Days Left</th><th>Expiry Status</th><th>Record Status</th><th>Call</th></tr></thead>
+          
           <tbody id="tableBody"><tr><td colspan="9" style="text-align:center;padding:30px">Please log in...</td></tr></tbody>
         </table></div>
         <div class="table-footer"><div id="entriesInfo">Showing 0 entries</div><div class="pagination" id="pagination"></div></div>
@@ -1707,6 +1912,6 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
 
 </div>
 
-<script src="script.js?v=pending-actions-v45"></script>
+<script src="script.js?v=expiring-seven-days-v60"></script>
 </body>
 </html>
