@@ -227,7 +227,8 @@ function updateDashboard() {
   let urgent = 0;
   let expired = 0;
   let expiredFiveDays = 0;
-  let expiredOlderThanFive = 0;
+  let expiredFiveToTen = 0;
+  let expiredOverTen = 0;
 
   // Latest row per registration number.
   const latestByReg = new Map();
@@ -269,13 +270,15 @@ function updateDashboard() {
 
       if (days >= -5) {
         expiredFiveDays++;
+      } else if (days >= -10) {
+        expiredFiveToTen++;
       } else {
-        expiredOlderThanFive++;
+        expiredOverTen++;
       }
     } else {
-      // Expiring in 7 Days includes today through the next 7 days.
-      if (days <= 7) expiringSevenDays++;
+      // Separate upcoming ranges: 0–3 urgent, then 4–7 days.
       if (days <= 3) urgent++;
+      else if (days <= 7) expiringSevenDays++;
     }
   });
 
@@ -362,7 +365,8 @@ function updateDashboard() {
   if ($("urgentVehicles")) $("urgentVehicles").textContent = urgent;
   if ($("expiredVehicles")) $("expiredVehicles").textContent = expired;
   if ($("expiredFiveDays")) $("expiredFiveDays").textContent = expiredFiveDays;
-  if ($("expiredOlderThanFive")) $("expiredOlderThanFive").textContent = expiredOlderThanFive;
+  if ($("expiredFiveToTen")) $("expiredFiveToTen").textContent = expiredFiveToTen;
+  if ($("expiredOverTen")) $("expiredOverTen").textContent = expiredOverTen;
 
   if ($("callDone")) $("callDone").textContent = callDoneCount;
   if ($("cantConnect")) $("cantConnect").textContent = cantConnectCount;
@@ -439,9 +443,13 @@ function expiryState(days) {
 }
 
 function renderVehicles() {
-  const search = String($("searchInput").value || "").trim().toLowerCase();
-  const expiryFilter = $("expiryFilter").value;
-  const recordFilter = $("recordFilter").value;
+  const searchEl = $("searchInput");
+  const expiryEl = $("expiryFilter");
+  const recordEl = $("recordFilter");
+
+  const search = String(searchEl ? searchEl.value : "").trim().toLowerCase();
+  const expiryFilter = expiryEl ? expiryEl.value : "all";
+  const recordFilter = recordEl ? recordEl.value : "all";
   const heading = $("dataListHeading");
 
   const matchesSearch = v =>
@@ -1388,7 +1396,7 @@ function renderStatusHistoryEntry(entry, index) {
       <div class="status-history-entry-grid">
         <div class="status-history-item">
           <span class="status-history-icon shi-blue">🚗</span>
-          <div><small>Vehicle Number</small><strong>${escapeHtml(v.vehicleNumber || "—")}</strong></div>
+          <div><small>Vehicle Number</small><strong>${escapeHtml(String(v.vehicleNumber || "—").toUpperCase())}</strong></div>
         </div>
 
         <div class="status-history-item">
@@ -1437,8 +1445,7 @@ function getVehiclesForFilter(filterName) {
     const closed = isCurrentlyClosed(v.vehicleNumber);
 
     if (filterName === "expiring7") {
-      // Pending vehicles expiring from today through the next 7 days.
-      return lower === "pending" && days !== null && days >= 0 && days <= 7;
+      return lower === "pending" && days !== null && days >= 4 && days <= 7;
     }
     if (filterName === "urgent") {
       return lower === "pending" && days !== null && days >= 0 && days <= 3;
@@ -1477,7 +1484,10 @@ function getVehiclesForFilter(filterName) {
       return lower === "pending" && days !== null && days < 0 && days >= -5;
     }
     if (filterName === "expiredOlder") {
-      return lower === "pending" && days !== null && days < -5;
+      return lower === "pending" && days !== null && days < -5 && days >= -10;
+    }
+    if (filterName === "expiredOver10") {
+      return lower === "pending" && days !== null && days < -10;
     }
     return false;
   });
@@ -1717,24 +1727,121 @@ function hideMiniVehicleModal() {
 window.showMiniVehicleModal = showMiniVehicleModal;
 window.hideMiniVehicleModal = hideMiniVehicleModal;
 
+
+function renderExpiryPopupTable(list) {
+  if (!list.length) {
+    return '<div class="history-empty">No vehicle details found.</div>';
+  }
+
+  const rows = [...list].sort((a, b) => {
+    const da = daysLeftForVehicle(a);
+    const db = daysLeftForVehicle(b);
+
+    if (da === null && db === null) return 0;
+    if (da === null) return 1;
+    if (db === null) return -1;
+    return da - db;
+  });
+
+  return `
+    <div class="mini-table-wrap">
+      <table class="mini-popup-table">
+        <thead>
+          <tr>
+            <th>Registration No</th>
+            <th>Phone</th>
+            <th>Vehicle Name</th>
+            <th>Fuel Type</th>
+            <th>PUCC Expiry</th>
+            <th>Days Left</th>
+            <th>Expiry Status</th>
+            <th>Record Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(v => {
+            const days = daysLeftForVehicle(v);
+            const expiry = expiryState(days);
+            const daysText =
+              days === null ? "—" :
+              days < 0 ? Math.abs(days) + " days ago" :
+              days === 0 ? "Today" :
+              days + " days";
+
+            return `<tr>
+              <td><strong>${escapeHtml(String(v.vehicleNumber || "—").toUpperCase())}</strong></td>
+              <td>${escapeHtml(v.mobileNumber || "—")}</td>
+              <td>${escapeHtml(v.vehicleName || "—")}</td>
+              <td>${escapeHtml(v.fuelType || "—")}</td>
+              <td>${escapeHtml(formatExpiryForVehicle(v))}</td>
+              <td class="${expiry.daysClass}"><strong>${escapeHtml(daysText)}</strong></td>
+              <td><span class="record-expiry ${expiry.badgeClass}">${escapeHtml(expiry.label)}</span></td>
+              <td>${escapeHtml(v.status || "Pending")}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderHistoryPopupTable(historyList) {
+  if (!historyList.length) {
+    return '<div class="history-empty">No history records found.</div>';
+  }
+
+  return `
+    <div class="mini-table-wrap">
+      <table class="mini-popup-table mini-history-table">
+        <thead>
+          <tr>
+            <th>Registration No</th>
+            <th>Phone</th>
+            <th>Vehicle Name</th>
+            <th>Fuel Type</th>
+            <th>PUCC Expiry</th>
+            <th>Action Date</th>
+            <th>Remarks</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${historyList.map(entry => {
+            const v = latestDetailsForHistoryEntry(entry);
+            return `<tr>
+              <td><strong>${escapeHtml(String(v.vehicleNumber || "—").toUpperCase())}</strong></td>
+              <td>${escapeHtml(v.mobileNumber || "—")}</td>
+              <td>${escapeHtml(v.vehicleName || "—")}</td>
+              <td>${escapeHtml(v.fuelType || "—")}</td>
+              <td>${escapeHtml(v.validUpto ? formatDisplayDate(v.validUpto) : "—")}</td>
+              <td>${escapeHtml(formatDisplayDate(v.callDate || v.timestamp))}</td>
+              <td class="mini-history-remarks">${escapeHtml(String(v.remarks || "").trim() || "No remarks entered")}</td>
+              <td><strong>${escapeHtml(v.status || "—")}</strong></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
 function openMiniVehicleScreen(filterName) {
   const titles = {
-    expiring7: "⏳ Expiring in 7 Days",
+    expiring7: "⏳ Expiring in 3–7 Days",
     urgent: "🚨 Urgent Vehicles",
     expired: "⛔ Expired Vehicles",
-    callDone: "✅ Call Done History",
-    cantConnect: "📵 Can't Connect History",
-    closed: "🔒 Closed History",
+    callDone: "📞 Call Done",
+    cantConnect: "📵 Can't Connect",
+    closed: "🔒 Closed",
     callHistory: "🕘 Pending Vehicles",
     expired5: "🕔 Expired 1–5 Days Ago",
-    expiredOlder: "📋 Expired More Than 5 Days Ago"
+    expiredOlder: "📋 Expired 5–10 Days Ago",
+    expiredOver10: "📋 Expired More Than 10 Days Ago"
   };
 
   $("miniVehicleTitle").textContent = titles[filterName] || "Vehicle Details";
   const cards = $("miniVehicleCards");
 
-  // Call Done / Can't Connect / Closed = every action record.
-  // Same registration number can appear repeatedly and each history entry counts.
+  // Call Done / Can't Connect / Closed:
+  // show every saved action/history entry in old-style table format.
   if (
     filterName === "callDone" ||
     filterName === "cantConnect" ||
@@ -1744,11 +1851,9 @@ function openMiniVehicleScreen(filterName) {
 
     $("miniVehicleSummary").textContent =
       historyList.length +
-      (historyList.length === 1 ? " History Record" : " History Records");
+      (historyList.length === 1 ? " Record" : " Records");
 
-    cards.innerHTML = historyList.length
-      ? historyList.map((entry,index) => renderStatusHistoryEntry(entry,index)).join("")
-      : '<div class="history-empty">No history records found.</div>';
+    cards.innerHTML = renderHistoryPopupTable(historyList);
 
     $("miniVehicleModal").dataset.filterName = filterName;
     showMiniVehicleModal();
@@ -1757,6 +1862,7 @@ function openMiniVehicleScreen(filterName) {
 
   let list = getVehiclesForFilter(filterName);
 
+  // Pending keeps the detailed old card/history/call workflow.
   if (filterName === "callHistory") {
     const seen = new Set();
 
@@ -1766,43 +1872,24 @@ function openMiniVehicleScreen(filterName) {
       seen.add(reg);
       return true;
     });
+
+    $("miniVehicleSummary").textContent =
+      list.length + (list.length === 1 ? " Vehicle" : " Vehicles");
+
+    cards.innerHTML = list.length
+      ? list.map(v => renderStatusVehicleCard(v, filterName)).join("")
+      : '<div class="history-empty">No vehicle details found.</div>';
+
+    $("miniVehicleModal").dataset.filterName = filterName;
+    showMiniVehicleModal();
+    return;
   }
 
+  // Expiry-related icons use old-style table format.
   $("miniVehicleSummary").textContent =
     list.length + (list.length === 1 ? " Vehicle" : " Vehicles");
 
-  if (!list.length) {
-    cards.innerHTML =
-      '<div class="history-empty">No vehicle details found.</div>';
-
-  } else if (filterName === "callHistory") {
-    cards.innerHTML =
-      list.map(v => renderStatusVehicleCard(v, filterName)).join("");
-
-  } else {
-    cards.innerHTML = list.map(v => {
-      const days = daysLeftForVehicle(v);
-
-      const dayText =
-        days === null ? "—" :
-        days < 0 ? Math.abs(days) + " days ago" :
-        days === 0 ? "Today" :
-        days + " days";
-
-      return `<article class="vehicle-history-card">
-        <div class="vehicle-history-top">
-          <div class="vehicle-info-grid">
-            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-blue">🚗</div><div class="vehicle-info-text"><div class="vehicle-info-label">Vehicle Number</div><div class="vehicle-info-value">${escapeHtml(v.vehicleNumber)}</div></div></div>
-            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-purple">👤</div><div class="vehicle-info-text"><div class="vehicle-info-label">Phone</div><div class="vehicle-info-value">${escapeHtml(v.mobileNumber)}</div></div></div>
-            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-teal">🚙</div><div class="vehicle-info-text"><div class="vehicle-info-label">Vehicle</div><div class="vehicle-info-value">${escapeHtml(v.vehicleName)}</div></div></div>
-            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-red">🗓️</div><div class="vehicle-info-text"><div class="vehicle-info-label">Expiry</div><div class="vehicle-info-value">${escapeHtml(formatExpiryForVehicle(v))}</div></div></div>
-            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-yellow">⌛</div><div class="vehicle-info-text"><div class="vehicle-info-label">Days</div><div class="vehicle-info-value">${escapeHtml(dayText)}</div></div></div>
-            <div class="vehicle-info-item"><div class="vehicle-info-icon vi-orange">📄</div><div class="vehicle-info-text"><div class="vehicle-info-label">Status</div><div class="vehicle-info-value">${escapeHtml(v.status || "Pending")}</div></div></div>
-          </div>
-        </div>
-      </article>`;
-    }).join("");
-  }
+  cards.innerHTML = renderExpiryPopupTable(list);
 
   $("miniVehicleModal").dataset.filterName = filterName;
   showMiniVehicleModal();
@@ -1911,12 +1998,170 @@ function exportAllDataToExcel() {
 
 
 
+
+
+function hideTopSearchResults() {
+  const box = document.getElementById("topSearchResults");
+  if (!box) return;
+  box.classList.remove("show");
+  box.setAttribute("aria-hidden", "true");
+}
+
+function renderTopSearchResults(query) {
+  const box = document.getElementById("topSearchResults");
+  const body = document.getElementById("topSearchResultsBody");
+  const count = document.getElementById("topSearchResultsCount");
+
+  if (!box || !body) return;
+
+  const q = String(query || "").trim().toLowerCase();
+
+  if (!q) {
+    hideTopSearchResults();
+    body.innerHTML = '<tr><td colspan="3" class="top-search-empty">Start typing to search.</td></tr>';
+    if (count) count.textContent = "0 results";
+    return;
+  }
+
+  let rows = vehicleData.filter(v =>
+    String(v.vehicleNumber || "").toLowerCase().includes(q) ||
+    String(v.mobileNumber || "").toLowerCase().includes(q) ||
+    String(v.vehicleName || "").toLowerCase().includes(q)
+  );
+
+  rows.sort((a, b) => {
+    const da = parseDate(a.timestamp) || new Date(0);
+    const db = parseDate(b.timestamp) || new Date(0);
+    return db - da;
+  });
+
+  box.classList.add("show");
+  box.setAttribute("aria-hidden", "false");
+
+  if (!rows.length) {
+    body.innerHTML =
+      '<tr><td colspan="3" class="top-search-empty">No matching vehicle records found.</td></tr>';
+    if (count) count.textContent = "0 results";
+    return;
+  }
+
+  // Keep the top search compact: show up to 20 best/current matches.
+  const visibleRows = rows.slice(0, 20);
+
+  body.innerHTML = visibleRows.map(v => {
+    const days = daysLeftForVehicle(v);
+    const expiry = expiryState(days);
+
+    const daysText =
+      days === null ? "—" :
+      days < 0 ? Math.abs(days) + " days ago" :
+      days === 0 ? "Today" :
+      days + " days";
+
+    return `<tr>
+      <td class="top-search-reg"><strong>${escapeHtml(String(v.vehicleNumber || "—").toUpperCase())}</strong></td>
+      <td class="top-search-expiry">${escapeHtml(formatExpiryForVehicle(v))}</td>
+      <td class="top-search-status"><span class="record-expiry ${expiry.badgeClass}">${escapeHtml(expiry.label)}</span></td>
+    </tr>`;
+  }).join("");
+
+  if (count) {
+    count.textContent =
+      rows.length + (rows.length === 1 ? " result" : " results") +
+      (rows.length > 20 ? " — showing first 20" : "");
+  }
+}
+
+window.renderTopSearchResults = renderTopSearchResults;
+window.hideTopSearchResults = hideTopSearchResults;
+
+function renderRecordsPopup() {
+  const input = document.getElementById("recordsPopupSearch");
+  const body = document.getElementById("recordsPopupBody");
+  const count = document.getElementById("recordsPopupCount");
+
+  if (!body) return;
+
+  const q = String(input?.value || "").trim().toLowerCase();
+
+  let rows = [...vehicleData];
+
+  if (q) {
+    rows = rows.filter(v =>
+      String(v.vehicleNumber || "").toLowerCase().includes(q) ||
+      String(v.mobileNumber || "").toLowerCase().includes(q) ||
+      String(v.vehicleName || "").toLowerCase().includes(q)
+    );
+  }
+
+  rows.sort((a, b) => {
+    const da = parseDate(a.timestamp) || new Date(0);
+    const db = parseDate(b.timestamp) || new Date(0);
+
+    if (db.getTime() !== da.getTime()) {
+      return db - da;
+    }
+
+    return String(a.vehicleNumber || "")
+      .localeCompare(String(b.vehicleNumber || ""));
+  });
+
+  if (!rows.length) {
+    body.innerHTML =
+      '<tr><td colspan="8" class="records-popup-empty">No matching vehicle records found.</td></tr>';
+    if (count) count.textContent = "0 records";
+    return;
+  }
+
+  body.innerHTML = rows.map(v => {
+    const days = daysLeftForVehicle(v);
+    const expiry = expiryState(days);
+
+    const daysText =
+      days === null ? "—" :
+      days < 0 ? Math.abs(days) + " days ago" :
+      days === 0 ? "Today" :
+      days + " days";
+
+    return `<tr>
+      <td><strong>${escapeHtml(v.vehicleNumber || "—")}</strong></td>
+      <td>${escapeHtml(v.mobileNumber || "—")}</td>
+      <td>${escapeHtml(v.vehicleName || "—")}</td>
+      <td>${escapeHtml(v.fuelType || "—")}</td>
+      <td>${escapeHtml(formatExpiryForVehicle(v))}</td>
+      <td class="${expiry.daysClass}">${escapeHtml(daysText)}</td>
+      <td><span class="record-expiry ${expiry.badgeClass}">${escapeHtml(expiry.label)}</span></td>
+      <td>${escapeHtml(v.status || "Pending")}</td>
+    </tr>`;
+  }).join("");
+
+  if (count) {
+    count.textContent = rows.length + (rows.length === 1 ? " record" : " records");
+  }
+}
+
+window.renderRecordsPopup = renderRecordsPopup;
+
 function openRecordsPanel() {
   const modal = document.getElementById("recordsPanelModal");
   if (!modal) return;
+
   modal.classList.add("show");
   modal.style.display = "flex";
   modal.setAttribute("aria-hidden", "false");
+
+  const topSearch = document.getElementById("topSearchInput");
+  const popupSearch = document.getElementById("recordsPopupSearch");
+
+  if (popupSearch && topSearch && topSearch.value.trim()) {
+    popupSearch.value = topSearch.value;
+  }
+
+  renderRecordsPopup();
+
+  setTimeout(() => {
+    document.getElementById("recordsPopupSearch")?.focus();
+  }, 80);
 }
 
 function closeRecordsPanel() {
@@ -1931,8 +2176,107 @@ window.openRecordsPanel = openRecordsPanel;
 window.closeRecordsPanel = closeRecordsPanel;
 
 function bindUI() {
+
+  document.addEventListener("click", function (event) {
+    const searchWrap = document.querySelector(".topbar .top-search");
+    const results = document.getElementById("topSearchResults");
+
+    if (
+      results &&
+      results.classList.contains("show") &&
+      !results.contains(event.target) &&
+      !(searchWrap && searchWrap.contains(event.target))
+    ) {
+      hideTopSearchResults();
+    }
+  });
+
+  document.querySelectorAll("[data-open-records], .open-records-popup").forEach(btn => {
+    if (btn.dataset.recordsBound === "1") return;
+    btn.dataset.recordsBound = "1";
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      openRecordsPanel();
+    });
+  });
   if ($("recordsPanelBtn")) $("recordsPanelBtn").onclick = openRecordsPanel;
   if ($("recordsPanelClose")) $("recordsPanelClose").onclick = closeRecordsPanel;
+  if ($("recordsPopupSearch")) {
+    $("recordsPopupSearch").oninput = function () {
+      if ($("topSearchInput")) $("topSearchInput").value = this.value;
+      renderRecordsPopup();
+    };
+  }
+
+  if ($("topSearchInput")) {
+    let topSearchTimer = null;
+
+    $("topSearchInput").oninput = function () {
+      const value = String(this.value || "");
+      clearTimeout(topSearchTimer);
+
+      topSearchTimer = setTimeout(() => {
+        renderTopSearchResults(value);
+      }, 100);
+    };
+
+    $("topSearchInput").onkeydown = function (event) {
+      if (event.key === "Escape") {
+        hideTopSearchResults();
+        this.blur();
+      }
+    };
+
+    $("topSearchInput").onfocus = function () {
+      if (String(this.value || "").trim()) {
+        renderTopSearchResults(this.value);
+      }
+    };
+  }
+
+  if ($("recordsPopupRefresh")) {
+    $("recordsPopupRefresh").onclick = async function () {
+      if (this.disabled) return;
+
+      this.disabled = true;
+      this.classList.add("refreshing");
+
+      try {
+        if (typeof loadVehicles === "function") {
+          await loadVehicles();
+        }
+        renderRecordsPopup();
+      } finally {
+        setTimeout(() => {
+          this.disabled = false;
+          this.classList.remove("refreshing");
+        }, 500);
+      }
+    };
+  }
+
+  if ($("topRefreshBtn")) {
+    $("topRefreshBtn").onclick = async function () {
+      if (this.disabled) return;
+      this.disabled = true;
+      this.classList.add("refreshing");
+      try {
+        const existingRefresh = $("refreshBtn");
+        if (existingRefresh) {
+          existingRefresh.click();
+        } else if (typeof loadVehicles === "function") {
+          await loadVehicles();
+        }
+      } finally {
+        setTimeout(() => {
+          this.disabled = false;
+          this.classList.remove("refreshing");
+        }, 700);
+      }
+    };
+  }
+
+
   $("loginBtn").onclick = login;
   $("closeRemarksAction").onclick = () => {
     $("remarksActionModal").classList.remove("show");
@@ -1978,39 +2322,29 @@ function bindUI() {
       console.error("Could not refresh data for duplicate check:", e);
     }
   };
-  if ($("mobileRecordsBtn")) $("mobileRecordsBtn").onclick = async () => {
-    if (!(await verifyRecordsPassword())) return;
-    currentView = "records";
-    currentPage = 1;
-    $("vehicleRecordsView").classList.add("active");
-    $("upcomingView").classList.remove("active");
-    $("pdfButton").style.display = "inline-block";
-    renderVehicles();
-    window.scrollTo({top:document.querySelector(".filter-panel").offsetTop-70,behavior:"smooth"});
-  };
+  if ($("mobileRecordsBtn")) {
+    $("mobileRecordsBtn").onclick = () => {
+      closeMobileSidebar();
+      openRecordsPanel();
+    };
+  }
   if ($("mobileRefreshBtn")) $("mobileRefreshBtn").onclick = loadVehicles;
   if ($("mobileMoreBtn")) $("mobileMoreBtn").onclick = openMobileSidebar;
   $("loginPass").onkeydown = e => { if (e.key === "Enter") login(); };
   $("topLogoutBtn").onclick = logout;
   $("refreshData").onclick = loadVehicles;
-  if ($("topSearchInput")) {
-    $("topSearchInput").oninput = () => {
-      $("searchInput").value = $("topSearchInput").value;
-      currentPage = 1;
-      renderVehicles();
-    };
-  }
+
   if ($("expiryFilter")) $("expiryFilter").onchange = () => { currentPage = 1; renderVehicles(); };
   if ($("recordFilter")) $("recordFilter").onchange = () => { currentPage = 1; renderVehicles(); };
   if ($("clearFilters")) $("clearFilters").onclick = () => {
-    $("searchInput").value = "";
+    if ($("searchInput")) $("searchInput").value = "";
     if ($("topSearchInput")) $("topSearchInput").value = "";
-    $("expiryFilter").value = "all";
-    $("recordFilter").value = "all";
+    if ($("expiryFilter")) $("expiryFilter").value = "all";
+    if ($("recordFilter")) $("recordFilter").value = "all";
     currentPage = 1;
     renderVehicles();
   };
-  $("searchInput").oninput = () => { currentPage = 1; syncTopSearch(); renderVehicles(); };
+  if ($("searchInput")) $("searchInput").oninput = () => { currentPage = 1; syncTopSearch(); renderVehicles(); };
 
   $("upcomingView").onclick = () => {
     currentView = "upcoming";
