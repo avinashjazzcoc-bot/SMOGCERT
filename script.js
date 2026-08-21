@@ -768,68 +768,155 @@ async function confirmRemarksAction() {
 }
 
 let statusUpdaterRowNumber = null;
+let statusUpdaterSelectedAction = "";
+let callLaunchLocked = false;
 
-function openStatusUpdater(rowNumber) {
-  const row = Number(rowNumber);
-  const vehicle = vehicleData.find(v => Number(v.rowNumber) === row);
+function normalizePhoneForTel(value) {
+  return String(value || "").replace(/[^\d+]/g, "");
+}
 
-  statusUpdaterRowNumber = row;
 
-  const modal = document.getElementById("statusUpdaterModal");
-  const info = document.getElementById("statusUpdaterVehicle");
-
-  if (!modal) {
-    alert("Status Updater window could not be loaded. Please refresh the page.");
+function launchTelForVehicle(rowNumber) {
+  const vehicle = vehicleData.find(v => Number(v.rowNumber) === Number(rowNumber));
+  if (!vehicle) return;
+  const telNumber = normalizePhoneForTel(vehicle.mobileNumber);
+  if (!telNumber) {
+    alert("No mobile number is saved for this vehicle.");
     return;
   }
+  window.location.href = "tel:" + telNumber;
+}
 
+function setStatusUpdaterChoice(action) {
+  statusUpdaterSelectedAction = action;
+  document.querySelectorAll("#statusUpdaterModal .status-choice").forEach(btn => {
+    btn.classList.toggle("selected", btn.dataset.statusAction === action);
+  });
+  const msg = document.getElementById("statusUpdaterMessage");
+  if (msg) msg.textContent = "";
+}
+
+
+function openStatusUpdaterFromPending(rowNumber) {
+  // Close Pending Vehicles first so no second modal can block Status Updater.
+  hideMiniVehicleModal();
+
+  // Open Status Updater on the next frame after Pending is fully hidden.
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      openStatusUpdater(rowNumber);
+    }, 30);
+  });
+}
+
+window.openStatusUpdaterFromPending = openStatusUpdaterFromPending;
+
+function openStatusUpdater(rowNumber) {
+  if (callLaunchLocked) return;
+  const row = Number(rowNumber);
+  const vehicle = vehicleData.find(v => Number(v.rowNumber) === row);
+  if (!vehicle) return;
+
+  const modal = document.getElementById("statusUpdaterModal");
+  if (!modal) return;
+
+  callLaunchLocked = true;
+  statusUpdaterRowNumber = row;
+  statusUpdaterSelectedAction = "";
+
+  const info = document.getElementById("statusUpdaterVehicle");
   if (info) {
-    info.innerHTML = vehicle
-      ? `<div class="status-updater-detail">
-           <span>Vehicle Number</span>
-           <strong>${escapeHtml(vehicle.vehicleNumber || "—")}</strong>
-         </div>
-         <div class="status-updater-detail">
-           <span>Mobile Number</span>
-           <strong>${escapeHtml(vehicle.mobileNumber || "—")}</strong>
-         </div>`
-      : `<div class="status-updater-detail">
-           <span>Vehicle Number</span>
-           <strong>—</strong>
-         </div>`;
+    info.innerHTML = `
+      <div class="status-updater-detail"><span>Vehicle Number</span><strong>${escapeHtml(vehicle.vehicleNumber || "—")}</strong></div>
+      <div class="status-updater-detail"><span>Mobile Number</span><strong>${escapeHtml(vehicle.mobileNumber || "—")}</strong></div>`;
   }
 
-  if (modal) {
-    modal.classList.add("show");
-    modal.style.display = "flex";
-    modal.setAttribute("aria-hidden", "false");
-  }
+  const remarks = document.getElementById("statusUpdaterRemarks");
+  if (remarks) remarks.value = "";
+  const msg = document.getElementById("statusUpdaterMessage");
+  if (msg) msg.textContent = "";
+  document.querySelectorAll("#statusUpdaterModal .status-choice").forEach(btn => btn.classList.remove("selected"));
+
+  // Open popup first.
+  modal.classList.add("show");
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden", "false");
+  if (window.syncModalStack) window.syncModalStack();
+
+  // Then launch the device's registered calling app using the saved number.
+  const telNumber = normalizePhoneForTel(vehicle.mobileNumber);
+  setTimeout(() => {
+    try {
+      if (telNumber) window.location.href = "tel:" + telNumber;
+    } finally {
+      setTimeout(() => { callLaunchLocked = false; }, 900);
+    }
+  }, 300);
 }
 
 function closeStatusUpdater() {
   const modal = document.getElementById("statusUpdaterModal");
-
   if (modal) {
     modal.classList.remove("show");
     modal.style.display = "none";
     modal.setAttribute("aria-hidden", "true");
   }
-
   statusUpdaterRowNumber = null;
+  statusUpdaterSelectedAction = "";
+  callLaunchLocked = false;
 }
 
-function chooseStatusUpdate(action) {
-  const row = Number(statusUpdaterRowNumber);
-  if (!row) return;
+async function saveStatusUpdater() {
+  const rowNumber = Number(statusUpdaterRowNumber);
+  const action = statusUpdaterSelectedAction;
+  const remarks = String(document.getElementById("statusUpdaterRemarks")?.value || "").trim();
+  const msg = document.getElementById("statusUpdaterMessage");
+  const btn = document.getElementById("statusUpdaterSave");
 
-  closeStatusUpdater();
-  openRemarksAction(action, row);
+  if (!rowNumber) { if (msg) msg.textContent = "Vehicle record is not available."; return; }
+  if (!action) { if (msg) msg.textContent = "Select Call Done, Can't Connect or Close."; return; }
+  if (btn && btn.disabled) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = "Saving..."; }
+  try {
+    const result = await apiPost(action, { rowNumber, remarks });
+    if (!result || !result.success) throw new Error(result?.message || "Could not save status.");
+    closeStatusUpdater();
+    await loadVehicles();
+    showSuccessMini(result.message || "Status saved successfully.");
+  } catch (error) {
+    if (msg) msg.textContent = error?.message || "Could not save status.";
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "💾 Save"; }
+  }
 }
-
 
 window.openStatusUpdater = openStatusUpdater;
 window.closeStatusUpdater = closeStatusUpdater;
-window.chooseStatusUpdate = chooseStatusUpdate;
+window.saveStatusUpdater = saveStatusUpdater;
+window.launchTelForVehicle = launchTelForVehicle;
+window.setStatusUpdaterChoice = setStatusUpdaterChoice;
+
+window.addEventListener("focus", function () {
+  if (!statusUpdaterRowNumber) return;
+  const modal = document.getElementById("statusUpdaterModal");
+  if (!modal) return;
+  modal.classList.add("show");
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden", "false");
+  if (window.syncModalStack) window.syncModalStack();
+});
+
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState !== "visible" || !statusUpdaterRowNumber) return;
+  const modal = document.getElementById("statusUpdaterModal");
+  if (!modal) return;
+  modal.classList.add("show");
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden", "false");
+  if (window.syncModalStack) window.syncModalStack();
+});
+
 
 function markStatus(action, rowNumber) {
   openRemarksAction(action, rowNumber);
@@ -1024,11 +1111,39 @@ function updateAddVehicleExpiryPreview() {
   }
 }
 
+
+function showExistingVehicleInline(vehicle) {
+  if (vehicle) existingVehicleMatch = vehicle;
+
+  const panel = $("existingVehiclePanel");
+  const modal = $("addVehicleModal");
+
+  if (panel) {
+    panel.style.display = existingVehicleMatch ? "block" : "none";
+    panel.classList.toggle("show", !!existingVehicleMatch);
+  }
+
+  if (modal) {
+    modal.classList.add("show");
+    modal.style.display = "flex";
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  if (existingVehicleMatch && panel) {
+    setTimeout(() => {
+      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 50);
+  }
+}
+
 async function saveNewVehicle() {
+  const saveBtn = $("saveAdd");
+  if (saveBtn && saveBtn.disabled) return;
+
   checkExistingVehicleNumber();
 
   if (existingVehicleMatch) {
-    alert("This vehicle number already exists. Use Update / Renew Existing Vehicle.");
+    showExistingVehicleInline(existingVehicleMatch);
     return;
   }
 
@@ -1043,17 +1158,64 @@ async function saveNewVehicle() {
   if (!/^\d{10}$/.test(mobileNumber)) return alert("Mobile number must be exactly 10 digits.");
   if (!vehicleName) return alert("Vehicle name is required.");
 
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.dataset.originalText = saveBtn.textContent;
+    saveBtn.textContent = "Saving...";
+  }
+
   try {
-    const result = await apiPost("addVehicle", {vehicleNumber,mobileNumber,vehicleName,fuelType,validity,remarks});
-    if (!result.success) throw new Error(result.message || "Could not add vehicle.");
+    const result = await apiPost("addVehicle", {
+      vehicleNumber,
+      mobileNumber,
+      vehicleName,
+      fuelType,
+      validity,
+      remarks
+    });
+
+    if (!result.success) {
+      const msg = String(result.message || "");
+
+      if (/already exists|existing vehicle|duplicate/i.test(msg)) {
+        const match = findExistingVehicle(vehicleNumber);
+        showExistingVehicleInline(match || existingVehicleMatch);
+        return;
+      }
+
+      throw new Error(msg || "Could not add vehicle.");
+    }
+
     $("addVehicleModal").classList.remove("show");
     ["newVehicleNumber","newMobile","newVehicleName","newRemarks"].forEach(id => $(id).value = "");
     $("existingVehiclePanel").style.display = "none";
-    $("saveAdd").disabled = false;
     existingVehicleMatch = null;
-    alert(result.message || "Vehicle added.");
+
+    showSuccessMini("Vehicle added successfully.");
     await loadVehicles();
-  } catch(e) { alert(e.message); }
+
+  } catch(e) {
+    const msg = String(e && e.message ? e.message : "");
+
+    if (/already exists|existing vehicle|duplicate/i.test(msg)) {
+      const match = findExistingVehicle(vehicleNumber);
+      showExistingVehicleInline(match || existingVehicleMatch);
+      return;
+    }
+
+    const errorBox = $("addVehicleMessage");
+    if (errorBox) {
+      errorBox.textContent = msg || "Could not add vehicle.";
+      errorBox.style.display = "block";
+    } else {
+      alert(msg || "Could not add vehicle.");
+    }
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = saveBtn.dataset.originalText || "💾 Save";
+    }
+  }
 }
 
 let passwordChangeType = "login";
@@ -1465,9 +1627,10 @@ function renderStatusVehicleCard(vehicle, filterName) {
 
   const actions = closed
     ? '<div class="history-closed-label">🔒 Closed — No further actions available</div>'
-    : `<button class="history-call" onclick="miniStatusAction('callDone',${Number(latest.rowNumber)})">📞 Call Done</button>
-       <button class="history-cant" onclick="miniStatusAction('cantConnect',${Number(latest.rowNumber)})">📵 Can't Connect</button>
-       <button class="history-close" onclick="miniStatusAction('close',${Number(latest.rowNumber)})">🔒 Close</button>`;
+    : filterName === "callHistory"
+      ? `<button class="pending-popup-call-btn" type="button"
+           onclick="window.openStatusUpdaterFromPending(${Number(latest.rowNumber)})">📞 Call</button>`
+      : "";
 
   return `
     <article class="vehicle-history-card ${filterName === "callHistory" ? "call-history-card" : ""}">
@@ -1524,6 +1687,36 @@ function renderStatusVehicleCard(vehicle, filterName) {
     </article>`;
 }
 
+
+function showMiniVehicleModal() {
+  const modal = document.getElementById("miniVehicleModal");
+  if (!modal) return;
+
+  modal.classList.add("show");
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden", "false");
+
+  if (window.syncModalStack) {
+    setTimeout(() => window.syncModalStack(), 0);
+  }
+}
+
+function hideMiniVehicleModal() {
+  const modal = document.getElementById("miniVehicleModal");
+  if (!modal) return;
+
+  modal.classList.remove("show");
+  modal.style.display = "none";
+  modal.setAttribute("aria-hidden", "true");
+
+  if (window.syncModalStack) {
+    setTimeout(() => window.syncModalStack(), 0);
+  }
+}
+
+window.showMiniVehicleModal = showMiniVehicleModal;
+window.hideMiniVehicleModal = hideMiniVehicleModal;
+
 function openMiniVehicleScreen(filterName) {
   const titles = {
     expiring7: "⏳ Expiring in 7 Days",
@@ -1558,7 +1751,7 @@ function openMiniVehicleScreen(filterName) {
       : '<div class="history-empty">No history records found.</div>';
 
     $("miniVehicleModal").dataset.filterName = filterName;
-    $("miniVehicleModal").classList.add("show");
+    showMiniVehicleModal();
     return;
   }
 
@@ -1612,7 +1805,7 @@ function openMiniVehicleScreen(filterName) {
   }
 
   $("miniVehicleModal").dataset.filterName = filterName;
-  $("miniVehicleModal").classList.add("show");
+  showMiniVehicleModal();
 }
 
 function toggleOlderHistory(id, button) {
@@ -1637,7 +1830,7 @@ window.toggleOlderHistory = toggleOlderHistory;
 
 function miniStatusAction(action, rowNumber) {
   const originFilter = $("miniVehicleModal").dataset.filterName || "";
-  $("miniVehicleModal").classList.remove("show");
+  hideMiniVehicleModal();
   $("remarksActionModal").dataset.originFilter = originFilter;
   openRemarksAction(action, rowNumber);
 }
@@ -1650,7 +1843,7 @@ function miniEditVehicle(rowNumber) {
   }
 
   existingVehicleMatch = vehicle;
-  $("miniVehicleModal").classList.remove("show");
+  hideMiniVehicleModal();
   openExistingVehicleEdit();
 }
 
@@ -1717,7 +1910,29 @@ function exportAllDataToExcel() {
 }
 
 
+
+function openRecordsPanel() {
+  const modal = document.getElementById("recordsPanelModal");
+  if (!modal) return;
+  modal.classList.add("show");
+  modal.style.display = "flex";
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeRecordsPanel() {
+  const modal = document.getElementById("recordsPanelModal");
+  if (!modal) return;
+  modal.classList.remove("show");
+  modal.style.display = "none";
+  modal.setAttribute("aria-hidden", "true");
+}
+
+window.openRecordsPanel = openRecordsPanel;
+window.closeRecordsPanel = closeRecordsPanel;
+
 function bindUI() {
+  if ($("recordsPanelBtn")) $("recordsPanelBtn").onclick = openRecordsPanel;
+  if ($("recordsPanelClose")) $("recordsPanelClose").onclick = closeRecordsPanel;
   $("loginBtn").onclick = login;
   $("closeRemarksAction").onclick = () => {
     $("remarksActionModal").classList.remove("show");
@@ -1865,8 +2080,10 @@ function bindUI() {
   $("saveAdd").onclick = saveNewVehicle;
 
 
-  $("topChangePasswordBtn").onclick = () => $("passwordModal").classList.add("show");
   if ($("settingsBtn")) $("settingsBtn").onclick = () => $("passwordModal").classList.add("show");
+  if ($("settingsRecordsBtn")) $("settingsRecordsBtn").onclick = async () => {
+    if (await verifyRecordsPassword()) window.open(SHEET_URL, "_blank", "noopener");
+  };
   $("cancelPassword").onclick = () => $("passwordModal").classList.remove("show");
   $("changeLoginPasswordBtn").onclick = () => changePasswordFlow("login");
   $("changeRecordsPasswordBtn").onclick = () => changePasswordFlow("records");
@@ -1880,16 +2097,11 @@ function bindUI() {
     button.onclick = () => setStatusFilter(button.dataset.filter, button);
   });
 
-  $("closeMiniVehicle").onclick = () => $("miniVehicleModal").classList.remove("show");
+  $("closeMiniVehicle").onclick = () => hideMiniVehicleModal();
   $("miniVehicleModal").onclick = e => {
-    if (e.target === $("miniVehicleModal")) $("miniVehicleModal").classList.remove("show");
+    if (e.target === $("miniVehicleModal")) hideMiniVehicleModal();
   };
 
-  $("sheetLink").onclick = async e => {
-    e.preventDefault();
-    closeMobileSidebar();
-    if (await verifyRecordsPassword()) window.open(SHEET_URL, "_blank", "noopener");
-  };
 
   document.querySelectorAll(".sidebar .side-link").forEach(el => {
     el.addEventListener("click", () => {
@@ -1907,16 +2119,51 @@ function escapeHtml(value) {
 window.markStatus = markStatus;
 window.renewVehicle = renewVehicle;
 
-document.addEventListener("click", function(e) {
-  const modal = document.getElementById("statusUpdaterModal");
-  if (modal && e.target === modal) closeStatusUpdater();
-});
+
 
 document.addEventListener("DOMContentLoaded", function () {
-  const modal = document.getElementById("statusUpdaterModal");
-  if (modal) {
-    modal.classList.remove("show");
-    modal.style.display = "none";
-    modal.setAttribute("aria-hidden", "true");
+  const saveBtn = document.getElementById("statusUpdaterSave");
+
+  document.querySelectorAll("#statusUpdaterModal .status-choice").forEach(btn => {
+    if (btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", function () {
+      setStatusUpdaterChoice(this.dataset.statusAction || "");
+    });
+  });
+
+  if (saveBtn && saveBtn.dataset.bound !== "1") {
+    saveBtn.dataset.bound = "1";
+    saveBtn.addEventListener("click", saveStatusUpdater);
   }
+
+  // X and Call Again use direct inline handlers.
+  // Clicking outside the popup intentionally does nothing.
 });
+/* V67 - simple single-popup lock */
+(function () {
+  function getVisibleModal() {
+    const modals = Array.from(document.querySelectorAll(".modal.show"));
+    return modals.length ? modals[modals.length - 1] : null;
+  }
+
+  function syncLock() {
+    const active = getVisibleModal();
+    document.documentElement.classList.toggle("popup-locked", !!active);
+    document.body.classList.toggle("popup-locked", !!active);
+  }
+
+  const observer = new MutationObserver(syncLock);
+
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".modal").forEach(m => {
+      observer.observe(m, {
+        attributes: true,
+        attributeFilter: ["class", "style"]
+      });
+    });
+    syncLock();
+  });
+
+  window.syncModalStack = syncLock;
+})();

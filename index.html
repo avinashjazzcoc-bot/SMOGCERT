@@ -1572,6 +1572,186 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
   }
 }
 
+
+/* V61 Settings options */
+.settings-panel-box{max-width:480px!important}
+.settings-option-list{display:grid;gap:10px;margin:18px 0}
+.settings-option-card{
+  width:100%;display:grid;grid-template-columns:44px 1fr 20px;align-items:center;
+  gap:12px;padding:13px 14px;border:1px solid #dbe7f2;border-radius:13px;
+  background:#f8fbff;text-align:left;cursor:pointer
+}
+.settings-option-card:hover{background:#eef6ff;border-color:#b8d7f4}
+.settings-option-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:11px;background:#e5f2ff;font-size:19px}
+.settings-option-card strong{display:block;color:#12385f;font-size:14px;font-weight:900}
+.settings-option-card small{display:block;color:#718096;font-size:10px;margin-top:2px}
+.settings-option-card b{font-size:24px;color:#7890a8}
+
+
+/* V62 Call + Status Updater */
+#statusUpdaterModal .status-choice-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 20px 8px}
+#statusUpdaterModal .status-choice{min-height:68px;border:2px solid transparent;border-radius:13px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-size:14px;font-weight:900;opacity:.9;transition:.16s}
+#statusUpdaterModal .status-choice.selected{border-color:#0b2e59;box-shadow:0 0 0 3px rgba(11,46,89,.12),0 8px 18px rgba(15,23,42,.15);opacity:1;transform:translateY(-1px)}
+#statusUpdaterModal .status-choice-done{background:linear-gradient(135deg,#34d399,#059669)}
+#statusUpdaterModal .status-choice-cant{background:linear-gradient(135deg,#fb7185,#dc2626)}
+#statusUpdaterModal .status-choice-close{background:linear-gradient(135deg,#a78bfa,#6d28d9)}
+#statusUpdaterModal .status-updater-remarks{display:block;padding:10px 20px 4px}
+#statusUpdaterModal .status-updater-remarks>span{display:block;margin-bottom:6px;color:#304862;font-size:12px;font-weight:900}
+#statusUpdaterModal .status-updater-remarks textarea{width:100%;min-height:82px;resize:vertical;padding:11px 12px;border:1px solid #d7e2ed;border-radius:10px;outline:none;font:inherit}
+#statusUpdaterModal .status-updater-message{min-height:18px;padding:5px 20px 0;color:#dc2626;font-size:12px;font-weight:900;text-align:center}
+#statusUpdaterModal .status-updater-footer{display:grid;grid-template-columns:1fr 1.25fr;gap:10px;padding:14px 20px 22px}
+#statusUpdaterModal .status-updater-footer button{min-height:46px;border:0;border-radius:11px;font-size:14px;font-weight:900;cursor:pointer}
+#statusUpdaterModal .status-updater-cancel{background:#e2e8f0;color:#334155}
+#statusUpdaterModal .status-updater-save{background:linear-gradient(135deg,#16a34a,#0877e8);color:#fff;box-shadow:0 7px 16px rgba(8,119,232,.18)}
+#statusUpdaterModal .status-updater-save:disabled{opacity:.6;cursor:wait}
+@media(max-width:520px){#statusUpdaterModal .status-choice-wrap{grid-template-columns:1fr}}
+
+
+/* V63 */
+#statusUpdaterModal .status-updater-call-again{
+  display:block;width:calc(100% - 40px);min-height:48px;margin:10px 20px 4px;
+  border:0;border-radius:12px;background:linear-gradient(135deg,#22c55e,#0ea5e9);
+  color:#fff;font-size:15px;font-weight:950;cursor:pointer;
+  box-shadow:0 8px 18px rgba(14,165,233,.18)
+}
+#statusUpdaterModal .status-updater-call-again:hover{transform:translateY(-1px)}
+.vehicle-history-actions .pending-popup-call-btn{
+  display:block;width:100%;min-height:52px;border:0;border-radius:12px;
+  background:linear-gradient(135deg,#34d399,#0ea5e9);color:#fff;
+  font-size:16px;font-weight:950;cursor:pointer;
+  box-shadow:0 8px 18px rgba(14,165,233,.16)
+}
+
+
+/* V64 - Status Updater remains open during/re-entering phone call */
+#statusUpdaterModal .status-cancel-disabled-note{
+  cursor:default!important;
+  opacity:.65!important;
+}
+
+
+
+
+/* V67 - one popup at a time */
+html.popup-locked,
+body.popup-locked{
+  overflow:hidden!important;
+}
+.modal.show{
+  pointer-events:auto!important;
+}
+#statusUpdaterModal.show{
+  position:fixed!important;
+  inset:0!important;
+  z-index:2147483000!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+#statusUpdaterModal.show .status-updater-box{
+  pointer-events:auto!important;
+}
+
+
+/* V68 - Status Updater footer: Save button only */
+#statusUpdaterModal .status-updater-footer{
+  display:block!important;
+  padding:14px 20px 22px!important;
+}
+#statusUpdaterModal #statusUpdaterSave{
+  width:100%!important;
+  min-height:48px!important;
+  border-radius:11px!important;
+  font-size:15px!important;
+  font-weight:950!important;
+}
+
+
+/* V70 - Pending/History popups can always reopen */
+#miniVehicleModal{
+  display:none;
+}
+#miniVehicleModal.show{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+
+
+/* V72 duplicate vehicle stays inside Add Vehicle popup */
+#existingVehiclePanel.show,
+#existingVehiclePanel[style*="display: block"]{
+  display:block!important;
+  position:relative!important;
+  z-index:2!important;
+}
+
+
+/* V74 - Records controls moved into first-row Records icon */
+.dashboard-row-primary{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.metric-records{
+  border-left:5px solid #7c3aed!important;
+  background:linear-gradient(145deg,#fff,#f7f4ff)!important;
+}
+.metric-records .metric-icon{
+  background:linear-gradient(135deg,#8b5cf6,#6d28d9)!important;
+  color:#fff!important;
+}
+.metric-records .metric-number{color:#6d28d9!important;font-size:21px!important}
+
+#recordsPanelModal{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:2147482500;
+  background:rgba(5,20,38,.68);
+  backdrop-filter:blur(5px);
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+#recordsPanelModal.show{display:flex!important}
+.records-panel-box{
+  width:min(1180px,96vw);
+  max-height:92vh;
+  overflow:auto;
+  background:#fff;
+  border-radius:20px;
+  box-shadow:0 25px 70px rgba(4,24,48,.35);
+}
+.records-panel-head{
+  position:sticky;
+  top:0;
+  z-index:3;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:18px 20px;
+  color:#fff;
+  background:linear-gradient(135deg,#0b376b,#0877e8);
+}
+.records-panel-head h2{margin:0;font-size:22px}
+.records-panel-head p{margin:4px 0 0;font-size:12px;color:#dbeeff}
+.records-panel-close{
+  width:40px;height:40px;border:0;border-radius:10px;
+  background:#ffffff20;color:#fff;font-size:27px;cursor:pointer
+}
+.records-panel-content{padding:18px}
+.records-panel-content .filter-panel{
+  margin:0!important;
+  box-shadow:none!important;
+  border:0!important;
+  padding:0!important;
+}
+@media(max-width:900px){
+  .dashboard-row-primary{grid-template-columns:1fr!important}
+  .records-panel-box{width:98vw}
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -1716,15 +1896,21 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
     <div class="status-updater-head">
       <div class="status-updater-title-wrap">
         <div class="status-updater-icon">📞</div>
-        <div><h3>Status Updater</h3><p>Select an action to update this vehicle.</p></div>
+        <div><h3>Status Updater</h3><p>Select the call status and save it.</p></div>
       </div>
-      <button type="button" class="status-updater-x" onclick="closeStatusUpdater()">×</button>
+      <button type="button" class="status-updater-x" id="statusUpdaterX" onclick="window.closeStatusUpdater()">×</button>
     </div>
     <div id="statusUpdaterVehicle" class="status-updater-vehicle"></div>
-    <div class="status-updater-actions">
-      <button class="status-update-done" onclick="chooseStatusUpdate('callDone')">📞 Call Done</button>
-      <button class="status-update-cant" onclick="chooseStatusUpdate('cantConnect')">📵 Can't Connect</button>
-      <button class="status-update-close" onclick="chooseStatusUpdate('close')">🔒 Close</button>
+    <button type="button" id="statusUpdaterCallAgain" class="status-updater-call-again" onclick="window.launchTelForVehicle(statusUpdaterRowNumber)">📞 Call Again</button>
+    <div class="status-choice-wrap">
+      <button type="button" class="status-choice status-choice-done" data-status-action="callDone">📞 <strong>Call Done</strong></button>
+      <button type="button" class="status-choice status-choice-cant" data-status-action="cantConnect">📵 <strong>Can't Connect</strong></button>
+      <button type="button" class="status-choice status-choice-close" data-status-action="close">🔒 <strong>Close</strong></button>
+    </div>
+    <label class="status-updater-remarks"><span>Remarks</span><textarea id="statusUpdaterRemarks" rows="3" placeholder="Enter remarks (optional)"></textarea></label>
+    <div id="statusUpdaterMessage" class="status-updater-message"></div>
+    <div class="status-updater-footer">
+      <button type="button" id="statusUpdaterSave" class="status-updater-save">💾 Save</button>
     </div>
   </div>
 </div>
@@ -1753,14 +1939,31 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
 </div>
 
 <div id="passwordModal" class="modal">
-  <div class="modal-box">
-    <h2>🔑 Password Settings</h2>
-    <p>Change your existing website login password or Records password.</p>
-    <div class="form-actions">
-      <button class="save-new" id="changeLoginPasswordBtn">Website Login Password</button>
-      <button class="security-btn" id="changeRecordsPasswordBtn">Records Password</button>
+  <div class="modal-box settings-panel-box">
+    <h2>⚙️ Settings</h2>
+    <p>Records and password options</p>
+
+    <div class="settings-option-list">
+      <button class="settings-option-card" id="settingsRecordsBtn" type="button">
+        <span class="settings-option-icon">📄</span>
+        <span><strong>Records</strong><small>Open Google Sheet vehicle records</small></span>
+        <b>›</b>
+      </button>
+
+      <button class="settings-option-card" id="changeLoginPasswordBtn" type="button">
+        <span class="settings-option-icon">🔐</span>
+        <span><strong>Change Password</strong><small>Change website login password</small></span>
+        <b>›</b>
+      </button>
+
+      <button class="settings-option-card" id="changeRecordsPasswordBtn" type="button">
+        <span class="settings-option-icon">🛡️</span>
+        <span><strong>Records Password</strong><small>Change records access password</small></span>
+        <b>›</b>
+      </button>
     </div>
-    <div class="form-actions"><button class="cancel-new" id="cancelPassword">Cancel</button></div>
+
+    <div class="form-actions"><button class="cancel-new" id="cancelPassword">Close</button></div>
   </div>
 </div>
 
@@ -1790,7 +1993,7 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
 
 <div id="miniVehicleModal" class="modal">
   <div class="modal-box mini-list-box">
-    <div class="mini-list-head"><h2 id="miniVehicleTitle">Vehicle Details</h2><button id="closeMiniVehicle" class="mini-close" type="button">✕</button></div>
+    <div class="mini-list-head"><h2 id="miniVehicleTitle">Vehicle Details</h2><button id="closeMiniVehicle" class="mini-close" type="button" onclick="window.hideMiniVehicleModal()">✕</button></div>
     <div id="miniVehicleSummary" class="mini-summary"></div>
     <div id="miniVehicleCards" class="vehicle-history-cards"></div>
   </div>
@@ -1813,12 +2016,10 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
       <a class="side-link" href="https://myaadhaar.uidai.gov.in/check-aadhaar-validity/en" target="_blank" rel="noopener"><span class="side-icon">🪪</span>Aadhaar</a>
       <a class="side-link" href="https://echallan.parivahan.gov.in/index/accused-challan" target="_blank" rel="noopener"><span class="side-icon">🧾</span>eChallan</a>
       <a class="side-link" href="https://vahandetails.com" target="_blank" rel="noopener"><span class="side-icon">🚘</span>Vehicle Details</a>
-      <a class="side-link" id="sheetLink" href="https://docs.google.com/spreadsheets/d/1S8a5kqVttJa7TSijjkEUzmL-F7rc039LHltu7rCi5j0/edit?gid=1544491919#gid=1544491919" target="_blank" rel="noopener"><span class="side-icon">📄</span>Records</a>
       <button class="side-link" id="settingsBtn" type="button"><span class="side-icon">⚙️</span>Settings</button>
     </nav>
 
     <div class="side-bottom">
-      <button class="side-link" id="topChangePasswordBtn" type="button"><span class="side-icon">🔒</span>Password</button>
       <button class="side-link" id="topLogoutBtn" type="button"><span class="side-icon">↪</span>Logout</button>
     </div>
   </aside>
@@ -1838,6 +2039,9 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
         <button id="addVehicleBtn" class="metric-card metric-add" type="button">
           <span class="metric-icon">＋</span><span><span class="metric-number add-word">ADD</span><span class="metric-label">Add Vehicle Details</span></span>
         </button>
+        <button id="recordsPanelBtn" class="metric-card metric-records" type="button">
+          <span class="metric-icon">📋</span><span><span class="metric-number add-word">RECORDS</span><span class="metric-label">Search &amp; Record Options</span></span>
+        </button>
       </section>
 
       <section class="dashboard-row dashboard-row-expiry">
@@ -1856,22 +2060,6 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
       </section>
       <!-- Total expired counter retained for existing JavaScript compatibility -->
       <span id="expiredVehicles" hidden>0</span>
-
-      <section class="filter-panel">
-        <div class="filter-row">
-          <div class="field-search"><span>⌕</span><input id="searchInput" type="text" placeholder="Search Registration Number / Phone Number / Vehicle Name"></div>
-          <div class="select-field"><label>Expiry Status</label><select id="expiryFilter"><option value="all">All</option><option value="valid">Valid</option><option value="soon">Soon Expiring</option><option value="urgent">Urgent 0–3 Days</option><option value="expired">Expired</option></select></div>
-          <div class="select-field"><label>Record Status</label><select id="recordFilter"><option value="all">All</option><option>Pending</option><option>Call Done</option><option>Can't Connect</option><option>Closed</option><option>Updated</option></select></div>
-          <button id="clearFilters" class="clear-btn" type="button">↻ &nbsp; Clear Filters</button>
-        </div>
-        <div class="filter-actions">
-          <button type="button" id="upcomingView" class="view-btn active">🔔 &nbsp; Expired &amp; Soon Expiring</button>
-          <button type="button" id="vehicleRecordsView" class="view-btn">▣ &nbsp; Vehicle Records</button>
-          <button type="button" id="refreshData" class="refresh-btn">▤ &nbsp; Refresh Google Sheet</button>
-          <button type="button" id="pdfButton" class="excel-btn" style="display:none">📊 Save All Data as Excel (.xlsx)</button>
-        </div>
-      </section>
-
       <div class="status-strip">
         <section class="dashboard-row dashboard-row-status">
 <button class="metric-card metric-small metric-history status-filter" type="button" data-filter="callHistory">
@@ -1912,6 +2100,35 @@ table{width:100%;border-collapse:collapse;min-width:1110px}th{background:linear-
 
 </div>
 
-<script src="script.js?v=expiring-seven-days-v60"></script>
+<script src="script.js?v=records-icon-v74"></script>
+
+<div id="recordsPanelModal" class="modal records-panel-modal" aria-hidden="true">
+  <div class="records-panel-box">
+    <div class="records-panel-head">
+      <div>
+        <h2>📋 Records</h2>
+        <p>Search, filter and switch vehicle record views.</p>
+      </div>
+      <button id="recordsPanelClose" type="button" class="records-panel-close">×</button>
+    </div>
+    <div class="records-panel-content">
+      <section class="filter-panel">
+        <div class="filter-row">
+          <div class="field-search"><span>⌕</span><input id="searchInput" type="text" placeholder="Search Registration Number / Phone Number / Vehicle Name"></div>
+          <div class="select-field"><label>Expiry Status</label><select id="expiryFilter"><option value="all">All</option><option value="valid">Valid</option><option value="soon">Soon Expiring</option><option value="urgent">Urgent 0–3 Days</option><option value="expired">Expired</option></select></div>
+          <div class="select-field"><label>Record Status</label><select id="recordFilter"><option value="all">All</option><option>Pending</option><option>Call Done</option><option>Can't Connect</option><option>Closed</option><option>Updated</option></select></div>
+          <button id="clearFilters" class="clear-btn" type="button">↻ &nbsp; Clear Filters</button>
+        </div>
+        <div class="filter-actions">
+          <button type="button" id="upcomingView" class="view-btn active">🔔 &nbsp; Expired &amp; Soon Expiring</button>
+          <button type="button" id="vehicleRecordsView" class="view-btn">▣ &nbsp; Vehicle Records</button>
+          <button type="button" id="refreshData" class="refresh-btn">▤ &nbsp; Refresh Google Sheet</button>
+          <button type="button" id="pdfButton" class="excel-btn" style="display:none">📊 Save All Data as Excel (.xlsx)</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
